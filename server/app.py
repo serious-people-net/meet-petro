@@ -69,6 +69,9 @@ def index():
 
 @app.get("/<path:path>")
 def assets(path: str):
+    # Directory requests (e.g. /app/) get their index.html, like a static host
+    if (DIST / path).is_dir():
+        return send_from_directory(DIST, f"{path.rstrip('/')}/index.html")
     return send_from_directory(DIST, path)
 
 

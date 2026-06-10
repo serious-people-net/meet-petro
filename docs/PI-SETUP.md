@@ -80,7 +80,7 @@ Wayland/labwc desktop, add to `~/.config/labwc/autostart` (or for X11,
 
 ```bash
 chromium-browser --kiosk --noerrdialogs --disable-infobars \
-  --check-for-update-interval=31536000 http://localhost:8080
+  --check-for-update-interval=31536000 "http://localhost:8080/app/?app"
 ```
 
 ### Escape hatch during the exhibit
@@ -106,4 +106,5 @@ manager config (labwc: `~/.config/labwc/rc.xml` keybind to
 - [ ] Touch works (chevrons, taps, swipes)
 - [ ] Test print from each audience×emotion combination
 - [ ] Screen blanking is off, sound output works
-- [ ] `?square` URL param checked once to confirm nothing important is clipped
+- [ ] `?app` URL param present (bare screen, no device chrome) and nothing
+      important is clipped by the circular panel

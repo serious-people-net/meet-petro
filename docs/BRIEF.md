@@ -45,10 +45,12 @@ Petro makes it easy.
 
 1. **Gallery (primary)** — Pi in kiosk mode, 1080×1080 round display
    (the panel itself clips to a circle), thermal/inkjet printer TBD via CUPS.
-2. **Online demo** — seriouspeople.co/meetpetro/demo (GitHub Pages):
-   identical app, but shows the generated artwork instead of printing.
-3. **Product page** — seriouspeople.co/meetpetro: simple hero + 3 features +
-   demo invitation. **Not built yet, deliberately.**
+2. **Online demo** — seriouspeople.co/meet-petro/app/ (GitHub Pages):
+   identical app, but shows the generated Decept on the success screen
+   instead of printing (printing only happens in `?app`/`?kiosk` mode).
+3. **Product page** — seriouspeople.co/meet-petro/: hero + 3 features +
+   demo invitation. Built at `src/site/` (own Vite entry, `index.html`;
+   the app lives at `app/index.html`).
 
 ## Data (expected to change)
 

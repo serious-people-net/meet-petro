@@ -137,6 +137,7 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
   color: var(--ink); max-width: 270px; text-wrap: balance;
 }
 .scr .headline.sm { font-size: 26px; }
+.scr .headline.xs { font-size: 20px; }
 .scr .subline {
   font-family: var(--body); font-weight: 400; font-size: 15px; line-height: 1.2;
   color: var(--ink-55); max-width: 230px; text-wrap: balance; letter-spacing: .1px;
@@ -259,3 +260,31 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
 }
 .loadbar.appear { animation: petro-fadein .5s ease both; }
 .reset-hint { font-size: 13px; color: var(--ink-55); animation: petro-fadein .4s ease both; }
+
+/* ============================================================
+   DECEPT — web-demo printout reveal on the success screen
+   ============================================================ */
+@keyframes decept-print {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.decept img {
+  display: block; max-height: 174px; width: auto;
+  background: #fff; border: 1px solid var(--ink-15);
+  box-shadow: 0 6px 18px rgba(44,48,56,.18);
+  animation: decept-print .7s ease both;
+}
+@media (prefers-reduced-motion: reduce) { .decept img { animation: none; } }
+
+/* ============================================================
+   KIOSK MODE — full-viewport screen for the Pi (1080×1080)
+   ============================================================ */
+.petro-kiosk {
+  margin: 0; min-height: 100vh; overflow: hidden;
+  background: var(--screen);
+}
+.kiosk-glass {
+  width: 378px; height: 378px;
+  position: relative; overflow: hidden;
+  background: radial-gradient(circle at 50% 44%, var(--screen) 56%, var(--screen-edge) 100%);
+}

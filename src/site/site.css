@@ -1,0 +1,163 @@
+/* ============================================================
+   PETRO PRODUCT PAGE — Mac II, modernised; friendly modern AI
+   Reuses the app tokens from index.css; adds one accent.
+   ============================================================ */
+
+:root {
+  --accent: #c2541c; /* burnt orange — remove by pointing this at var(--ink) */
+  --page:   #e8e9ec;
+  --card:   #f4f5f7;
+  --line:   rgba(44,48,56,.13);
+}
+
+/* the app css fixes #root to the viewport; the site scrolls */
+html, body { height: auto; }
+#root { height: auto; min-height: 100vh; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--body);
+  font-weight: 300;
+  line-height: 1.45;
+}
+
+.site { max-width: 1020px; margin: 0 auto; padding: 0 28px 90px; }
+
+.site .eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--ink-55); margin: 0 0 22px;
+}
+.site .accent { color: var(--accent); }
+
+/* ---- nav ---- */
+.site-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 26px 0 22px; border-bottom: 1px solid var(--line);
+}
+.brand { display: inline-flex; align-items: center; gap: 10px; }
+.brand-mark { width: 30px; height: auto; }
+.brand-name {
+  font-family: var(--display); font-weight: 800;
+  font-size: 22px; letter-spacing: -.4px;
+}
+.nav-cta {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--ink-70); text-decoration: none;
+  border: 1.5px solid var(--ink-40); border-radius: 3px; padding: 8px 14px;
+  transition: color .15s, border-color .15s;
+}
+.nav-cta:hover { color: var(--accent); border-color: var(--accent); }
+
+/* ---- hero ---- */
+.hero { padding: 84px 0 0; text-align: center; }
+.hero h1 {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(38px, 6.4vw, 66px); line-height: 1.0; letter-spacing: -1.6px;
+  margin: 0 auto; max-width: 17ch; text-wrap: balance;
+}
+.hero-sub {
+  font-size: clamp(19px, 2.4vw, 23px); color: var(--ink-70);
+  max-width: 520px; margin: 28px auto 0; text-wrap: balance;
+}
+.hero-actions { margin-top: 34px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -.2px;
+  color: #fff; background: var(--accent); text-decoration: none;
+  padding: 14px 26px; border-radius: 6px;
+  box-shadow: 0 2px 0 rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.25);
+  transition: transform .12s, filter .15s;
+}
+.btn:hover  { filter: brightness(1.06); }
+.btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
+.btn svg    { width: 18px; height: 18px; }
+
+/* the actual machine, scaled down, clickable into the demo */
+.hero-device {
+  display: block; margin: 64px auto 0; text-decoration: none;
+  width: 476px; height: 574px; overflow: visible;
+}
+.hero-device .petro-device { transform: scale(.85); transform-origin: top center; }
+.hero-device:hover .pcue.glow { color: var(--accent); }
+
+/* ---- Mac window chrome ---- */
+.mac-window {
+  background: var(--card); border: 1.5px solid var(--ink-70); border-radius: 8px;
+  box-shadow: 0 4px 0 rgba(44,48,56,.14);
+  overflow: hidden;
+}
+.mac-titlebar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 14px; border-bottom: 1.5px solid var(--ink-70);
+  background: #fbfbfc;
+}
+.mac-stripes {
+  flex: 1 1 auto; height: 11px;
+  background: repeating-linear-gradient(180deg,
+    var(--ink-40) 0 1.5px, transparent 1.5px 3.5px);
+}
+.mac-close {
+  width: 11px; height: 11px; border: 1.5px solid var(--ink-70);
+  background: var(--card); flex: 0 0 auto;
+}
+.mac-title {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--ink-70); white-space: nowrap;
+}
+.mac-body { padding: 34px 38px 38px; }
+
+/* ---- statement ---- */
+.statement { margin-top: 110px; }
+.statement .mac-body { text-align: center; padding: 56px 44px 60px; }
+.statement h2 {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(30px, 4.6vw, 46px); line-height: 1.02; letter-spacing: -1.1px;
+  margin: 0 auto; max-width: 15ch; text-wrap: balance;
+}
+.statement p {
+  font-size: 19px; color: var(--ink-70); max-width: 470px;
+  margin: 22px auto 0; text-wrap: balance;
+}
+
+/* ---- features ---- */
+.features {
+  margin-top: 18px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px;
+}
+.feature .mac-body { padding: 28px 26px 30px; }
+.feature-icon { width: 26px; height: 26px; color: var(--accent); }
+.feature h3 {
+  font-family: var(--display); font-weight: 700;
+  font-size: 21px; letter-spacing: -.4px; line-height: 1.08;
+  margin: 14px 0 0;
+}
+.feature p { font-size: 16px; color: var(--ink-70); margin: 10px 0 0; }
+
+/* ---- invite ---- */
+.invite { margin-top: 120px; text-align: center; }
+.invite h2 {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(32px, 5.4vw, 54px); line-height: 1.0; letter-spacing: -1.3px;
+  margin: 0 auto; max-width: 16ch; text-wrap: balance;
+}
+.invite-sub { font-size: 19px; color: var(--ink-70); max-width: 440px; margin: 22px auto 32px; text-wrap: balance; }
+
+/* ---- footer ---- */
+.site-footer {
+  margin-top: 110px; padding-top: 26px; border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.6px;
+  text-transform: uppercase; color: var(--ink-55);
+}
+.site-footer .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-40); }
+
+/* ---- small screens ---- */
+@media (max-width: 760px) {
+  .features { grid-template-columns: 1fr; }
+  .hero { padding-top: 56px; }
+  .hero-device { width: 336px; height: 406px; }
+  .hero-device .petro-device { transform: scale(.6); }
+  .statement { margin-top: 80px; }
+  .statement .mac-body { padding: 40px 26px 44px; }
+}
