@@ -1,113 +1,401 @@
-import { useCallback, useEffect, useState } from 'react'
-import { AnimatePresence } from 'framer-motion'
-import { Stage } from './components/Stage'
-import { BootScreen } from './screens/BootScreen'
-import { IntroScreen } from './screens/IntroScreen'
-import { InstructionScreen } from './screens/InstructionScreen'
-import { SelectorScreen } from './screens/SelectorScreen'
-import { GeneratingScreen } from './screens/GeneratingScreen'
-import { SuccessScreen } from './screens/SuccessScreen'
-import { audiences, emotions, type Option } from './data/options'
-import { copy } from './data/copy'
-import { petroStates } from './data/petro'
-import { loadMatrix, requestPrint } from './lib/print'
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
+import { PetroDevice } from './PetroDevice'
+import oilcanUrl from './assets/petro-oilcan-cut.png'
 
-// The whole app is a linear state machine. Boot runs once per page load;
-// every reset afterwards returns to the intro.
+/* ---- content ------------------------------------------------------- */
+const AUDIENCES = ['Concerned Moms', 'Disenfranchised Youth', 'Divorced Men', 'Hard-Working Citizens']
+const EMOTIONS  = ['Anger', 'Nostalgia', 'Fear', 'Hope']
 
-type ScreenName =
-  | 'boot'
-  | 'intro'
-  | 'audience-intro'
-  | 'audience'
-  | 'emotion-intro'
-  | 'emotion'
-  | 'generating'
-  | 'success'
+const AUDIENCE_IDS: Record<string, string> = {
+  'Concerned Moms':        'concerned-mothers',
+  'Disenfranchised Youth': 'disenfranchised-youth',
+  'Divorced Men':          'divorced-men',
+  'Hard-Working Citizens': 'hard-working-citizens',
+}
+const EMOTION_IDS: Record<string, string> = {
+  'Anger':     'anger',
+  'Nostalgia': 'nostalgia',
+  'Fear':      'fear',
+  'Hope':      'hope',
+}
 
+type NodeType = 'welcome' | 'loader' | 'select' | 'success' | 'blob'
+
+interface FlowNode {
+  type: NodeType
+  headlines?: string[]
+  dur?: number
+  store?: string
+  title?: string
+  options?: string[]
+  think?: boolean
+}
+
+const FLOW: FlowNode[] = [
+  { type: 'welcome' },
+  { type: 'loader', headlines: ["Great,\nlet's get started!"], dur: 2800 },
+  { type: 'select', store: 'audience', title: 'Who do you\nwant to influence?', options: AUDIENCES },
+  { type: 'loader', headlines: ['Great choice.'], dur: 2200 },
+  { type: 'select', store: 'emotion', title: 'What emotion\nshould we\nmanipulate?', options: EMOTIONS },
+  { type: 'loader', headlines: ["Now we're\ncooking!"], dur: 2200 },
+  { type: 'loader', think: true, dur: 6400,
+    headlines: ['Having deep\nstrategic thoughts…', 'Thinking of\nworld-first ideas', 'Cutting down\nsome trees…'] },
+  { type: 'success' },
+  { type: 'blob', dur: 3200 },
+]
+const RESET_INDEX = FLOW.findIndex((n) => n.type === 'blob')
+
+/* ---- sound --------------------------------------------------------- */
+const Sound = (() => {
+  let ctx: AudioContext | null = null
+  let master: GainNode | null = null
+  const ac = () => {
+    if (!ctx) {
+      try { ctx = new ((window as any).AudioContext || (window as any).webkitAudioContext)() } catch { return null }
+      master = ctx.createGain(); master.gain.value = 0.85; master.connect(ctx.destination)
+    }
+    if (ctx.state === 'suspended') ctx.resume()
+    return ctx
+  }
+  const mtof = (n: number) => 440 * Math.pow(2, (n - 69) / 12)
+  const tone = (note: number, at: number, dur: number, gain = 0.12, type: OscillatorType = 'triangle') => {
+    const c = ac(); if (!c || !master) return
+    const t = c.currentTime + at
+    const o = c.createOscillator(); o.type = type
+    o.frequency.value = mtof(note)
+    const g = c.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.014)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    o.connect(g).connect(master)
+    o.start(t); o.stop(t + dur + 0.03)
+  }
+  const stack = (notes: number[], at: number, dur: number, gain?: number, type?: OscillatorType) =>
+    notes.forEach((n) => tone(n, at, dur, gain, type))
+  const noise = (dur: number, gain: number, cutoff: number) => {
+    const c = ac(); if (!c || !master) return
+    const t = c.currentTime
+    const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+    const src = c.createBufferSource(); src.buffer = buf
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cutoff
+    const g = c.createGain()
+    g.gain.setValueAtTime(gain, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
+    src.connect(lp).connect(g).connect(master)
+    src.start(t); src.stop(t + dur)
+  }
+  return {
+    nav()    { noise(0.022, 0.04, 3400); tone(86, 0, 0.05, 0.04, 'sine') },
+    select() { noise(0.04, 0.05, 1800); tone(67, 0, 0.08, 0.06); tone(71, 0.055, 0.1, 0.05) },
+    power()  { [60, 64, 67, 72].forEach((n, i) => tone(n, i * 0.075, 0.55, 0.055)) },
+    loading(dur: number) {
+      const scale = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]
+      const step = 0.42
+      const steps = Math.min(scale.length, Math.max(3, Math.round((dur - 0.2) / step)))
+      for (let i = 0; i < steps; i++) tone(60 + scale[i], 0.1 + i * step, 0.32, 0.02, 'sine')
+    },
+    success() {
+      [[60, 64], [64, 67], [67, 72]].forEach((pair, i) => stack(pair, i * 0.13, 0.26, 0.06))
+      stack([60, 64, 67, 72], 0.42, 1.1, 0.05)
+    },
+    reset() {
+      [[72, 76], [69, 72], [65, 69], [64, 67]].forEach((pair, i) => stack(pair, i * 0.14, 0.34, 0.045))
+    },
+  }
+})()
+
+/* ---- shared bits --------------------------------------------------- */
+function PetroArt({ onClick }: { onClick?: () => void }) {
+  return (
+    <div className="petro-art" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
+      <img src={oilcanUrl} alt="Petro, a smiling oil drum" />
+    </div>
+  )
+}
+function Cue({ children, glow }: { children: React.ReactNode; glow?: boolean }) {
+  return <div className={'pcue' + (glow ? ' glow' : '')}>{children}</div>
+}
+function Lines({ text }: { text: string }) {
+  return text.split('\n').map((l, i) => (
+    <span key={i}>{i > 0 ? <br /> : null}{l}</span>
+  ))
+}
+const ChevL = () => (
+  <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2.2"
+    strokeLinecap="round" strokeLinejoin="round"><path d="M11.5 3.5 5 9l6.5 5.5" /></svg>
+)
+const ChevR = () => (
+  <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2.2"
+    strokeLinecap="round" strokeLinejoin="round"><path d="M6.5 3.5 13 9l-6.5 5.5" /></svg>
+)
+
+function useFillOnce(dur: number, onDone: () => void) {
+  const ref = useRef<HTMLDivElement>(null)
+  const done = useRef(false)
+  const cb = useRef(onDone); cb.current = onDone
+  useEffect(() => {
+    let raf: number, hold: ReturnType<typeof setTimeout>
+    let start: number | null = null
+    done.current = false
+    const tick = (t: number) => {
+      if (start == null) start = t
+      const v = Math.min(1, (t - start) / dur)
+      if (ref.current) ref.current.style.width = v * 100 + '%'
+      if (v < 1) { raf = requestAnimationFrame(tick) }
+      else if (!done.current) { done.current = true; hold = setTimeout(() => cb.current(), 360) }
+    }
+    raf = requestAnimationFrame(tick)
+    return () => { cancelAnimationFrame(raf); clearTimeout(hold) }
+  }, [dur])
+  return ref
+}
+
+/* ---- screens ------------------------------------------------------- */
+function WelcomeScreen({ onBegin }: { onBegin: () => void }) {
+  useEffect(() => { Sound.power() }, [])
+  const begin = () => { Sound.select(); onBegin() }
+  return (
+    <div className="scr scr-fade" onClick={begin}>
+      <div className="poweron" aria-hidden="true"><div className="pb" /><div className="pl" /></div>
+      <div className="zone-top">
+        <div className="headline">Hi, I&rsquo;m Petro.</div>
+        <div className="subline">Your automated oil &amp; gas marketer</div>
+      </div>
+      <div className="zone-mid"><PetroArt /></div>
+      <div className="zone-bot">
+        <div className="legend">
+          <span className="seg"><span className="kg">&#9664;&#8198;&#9654;</span>Browse</span>
+          <span className="seg"><span className="kg ret pulse">&#8629;</span>Select</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LoaderScreen({ node, onDone }: { node: FlowNode; onDone: () => void }) {
+  const [p, setP] = useState(0)
+  const fillRef = useRef<HTMLDivElement>(null)
+  const done = useRef(false)
+  const cb = useRef(onDone); cb.current = onDone
+  const dur = node.dur!
+  const headlines = node.headlines!
+  useEffect(() => { Sound.loading(dur / 1000) }, [])
+  useEffect(() => {
+    let raf: number, hold: ReturnType<typeof setTimeout>
+    let start: number | null = null
+    done.current = false
+    const tick = (t: number) => {
+      if (start == null) start = t
+      const v = Math.min(1, (t - start) / dur)
+      setP(v)
+      if (fillRef.current) fillRef.current.style.width = v * 100 + '%'
+      if (v < 1) { raf = requestAnimationFrame(tick) }
+      else if (!done.current) { done.current = true; hold = setTimeout(() => cb.current(), 360) }
+    }
+    raf = requestAnimationFrame(tick)
+    return () => { cancelAnimationFrame(raf); clearTimeout(hold) }
+  }, [dur])
+  const hi = Math.min(headlines.length - 1, Math.floor(p * headlines.length))
+  return (
+    <div className="scr scr-fade">
+      <div className="zone-top">
+        <div className="headline sm" key={hi} style={{ animation: 'petro-fadein .3s ease both' }}>
+          <Lines text={headlines[hi]} />
+        </div>
+      </div>
+      <div className="zone-mid"><PetroArt /></div>
+      <div className="zone-bot">
+        <div className="loadbar"><div className="fill" ref={fillRef} /></div>
+      </div>
+    </div>
+  )
+}
+
+function SelectScreen({ node, index, onChange, onConfirm }: {
+  node: FlowNode; index: number; onChange: (i: number) => void; onConfirm: () => void
+}) {
+  const opts = node.options!
+  const move = (d: number) => { Sound.nav(); onChange((index + d + opts.length) % opts.length) }
+  const confirm = () => { Sound.select(); onConfirm() }
+  return (
+    <div className="scr scr-fade">
+      <div className="zone-top">
+        <div className="headline sm"><Lines text={node.title!} /></div>
+      </div>
+      <div className="zone-mid"><PetroArt onClick={confirm} /></div>
+      <div className="zone-bot">
+        <div className="selector">
+          <button className="chev pulse" onClick={() => move(-1)} aria-label="Previous"><ChevL /></button>
+          <div className="value"><span key={index} className="value-fade">{opts[index]}</span></div>
+          <button className="chev pulse" onClick={() => move(1)} aria-label="Next"><ChevR /></button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SuccessScreen({ onReset }: { onReset: () => void }) {
+  const cb = useRef(onReset); cb.current = onReset
+  const [showBar, setShowBar] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const fillRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { Sound.success() }, [])
+  useEffect(() => { const t = setTimeout(() => setShowBar(true), 2100); return () => clearTimeout(t) }, [])
+  useEffect(() => {
+    if (!showBar) return
+    let raf: number, start: number | null = null, fired = false
+    const dur = 6500
+    const tick = (t: number) => {
+      if (start == null) start = t
+      const v = Math.min(1, (t - start) / dur)
+      if (fillRef.current) fillRef.current.style.width = v * 100 + '%'
+      if (!fired && v > 0.72) { fired = true; setResetting(true); Sound.reset() }
+      if (v < 1) raf = requestAnimationFrame(tick)
+      else setTimeout(() => cb.current(), 260)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [showBar])
+  const reset = () => { Sound.select(); cb.current() }
+  return (
+    <div className="scr scr-fade" onClick={reset}>
+      <div className="zone-top">
+        <div className="headline">Your idea<br />is ready</div>
+      </div>
+      <div className="zone-mid"><PetroArt /></div>
+      <div className="zone-bot">
+        {showBar && (
+          <>
+            <div className="loadbar appear"><div className="fill" ref={fillRef} /></div>
+            {resetting && <div className="subline reset-hint">Let&rsquo;s make some more ideas&hellip;</div>}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function BlobScreen({ dur, onDone }: { dur: number; onDone: () => void }) {
+  const cb = useRef(onDone); cb.current = onDone
+  useEffect(() => {
+    Sound.loading(dur / 1000)
+    const t = setTimeout(() => cb.current(), dur)
+    return () => clearTimeout(t)
+  }, [dur])
+  return (
+    <div className="scr blob-screen scr-fade">
+      <div className="blob" />
+      <Cue glow>[ Firing up the rig&hellip; ]</Cue>
+    </div>
+  )
+}
+
+/* ---- fit-to-viewport ----------------------------------------------- */
+function FitStage({ children }: { children: React.ReactNode }) {
+  const inner = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const fit = () => {
+      const el = inner.current; if (!el) return
+      el.style.transform = 'none'
+      const w = el.offsetWidth, h = el.offsetHeight
+      const scale = Math.min((window.innerWidth - 40) / w, (window.innerHeight - 40) / h)
+      const dx = (window.innerWidth  - w * scale) / 2
+      const dy = (window.innerHeight - h * scale) / 2
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    const id = setTimeout(fit, 200)
+    return () => { window.removeEventListener('resize', fit); clearTimeout(id) }
+  }, [])
+  return (
+    <div className="fit-stage">
+      <div className="fit-inner" ref={inner}>{children}</div>
+    </div>
+  )
+}
+
+/* ---- print --------------------------------------------------------- */
+function firePrint(audienceLabel: string, emotionLabel: string) {
+  const audience = AUDIENCE_IDS[audienceLabel] ?? audienceLabel.toLowerCase().replace(/\s+/g, '-')
+  const emotion  = EMOTION_IDS[emotionLabel]   ?? emotionLabel.toLowerCase()
+  fetch('/api/print', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ audience, emotion }),
+  }).catch(() => {})
+}
+
+/* ---- state machine ------------------------------------------------- */
 export default function App() {
-  const [screen, setScreen] = useState<ScreenName>('boot')
-  const [audience, setAudience] = useState<Option | null>(null)
-  const [demoImage, setDemoImage] = useState<string | null>(null)
+  const [phase, setPhase]       = useState(0)
+  const [selIndex, setSelIndex] = useState(0)
+  const [sel, setSel]           = useState<Record<string, string>>({})
+  const phaseRef    = useRef(phase);    phaseRef.current    = phase
+  const selIndexRef = useRef(selIndex); selIndexRef.current = selIndex
+  const selRef      = useRef(sel);      selRef.current      = sel
+  const node = FLOW[phase]
+
+  const advance = useCallback(() => setPhase((p) => (p + 1) % FLOW.length), [])
+  const goReset = useCallback(() => setPhase(RESET_INDEX), [])
+  const toStart = useCallback(() => setPhase(0), [])
+
+  const confirm = useCallback(() => {
+    const n = FLOW[phaseRef.current]
+    if (n.type === 'select') {
+      const value = n.options![selIndexRef.current]
+      setSel((s) => ({ ...s, [n.store!]: value }))
+      if (n.store === 'emotion') firePrint(selRef.current.audience, value)
+    }
+    advance()
+  }, [advance])
+
+  useEffect(() => { if (FLOW[phase].type === 'select') setSelIndex(0) }, [phase])
 
   useEffect(() => {
-    void loadMatrix()
-  }, [])
-
-  const go = useCallback((s: ScreenName) => () => setScreen(s), [])
-
-  const onEmotionPicked = useCallback(
-    (emotion: Option) => {
-      // Fire the print as the theatre starts — the result (a demo image,
-      // or nothing because paper is coming out of a real printer) is
-      // ready long before the loading bar finishes.
-      if (audience) {
-        void requestPrint(audience.id, emotion.id).then((r) =>
-          setDemoImage(r.demoImage),
-        )
+    const onKey = (e: KeyboardEvent) => {
+      const n = FLOW[phaseRef.current]
+      const enter = e.key === 'Enter' || e.key === ' '
+      if (n.type === 'welcome') {
+        if (enter) { e.preventDefault(); Sound.select(); advance() }
+      } else if (n.type === 'select') {
+        if (e.key === 'ArrowLeft')       { e.preventDefault(); Sound.nav(); setSelIndex((x) => (x - 1 + n.options!.length) % n.options!.length) }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); Sound.nav(); setSelIndex((x) => (x + 1) % n.options!.length) }
+        else if (enter)                  { e.preventDefault(); Sound.select(); confirm() }
+      } else if (n.type === 'success') {
+        if (enter) { e.preventDefault(); Sound.select(); goReset() }
       }
-      setScreen('generating')
-    },
-    [audience],
-  )
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [advance, confirm, goReset])
+
+  // kiosk: reset after 30s of inactivity on a selector
+  useEffect(() => {
+    if (FLOW[phase].type !== 'select') return
+    let t = setTimeout(goReset, 30000)
+    const bump = () => { clearTimeout(t); t = setTimeout(goReset, 30000) }
+    window.addEventListener('keydown', bump)
+    return () => { clearTimeout(t); window.removeEventListener('keydown', bump) }
+  }, [phase, goReset])
+
+  let screen: React.ReactNode
+  if      (node.type === 'welcome') screen = <WelcomeScreen onBegin={advance} />
+  else if (node.type === 'loader')  screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} />
+  else if (node.type === 'select')  screen = <SelectScreen node={node} index={selIndex} onChange={setSelIndex} onConfirm={confirm} />
+  else if (node.type === 'success') screen = <SuccessScreen onReset={goReset} />
+  else                              screen = <BlobScreen key={'s' + phase} dur={node.dur!} onDone={toStart} />
 
   return (
-    <Stage>
-      <AnimatePresence mode="wait">
-        {screen === 'boot' && (
-          <BootScreen key="boot" onDone={go('intro')} />
-        )}
-        {screen === 'intro' && (
-          <IntroScreen key="intro" onBegin={go('audience-intro')} />
-        )}
-        {screen === 'audience-intro' && (
-          <InstructionScreen
-            key="audience-intro"
-            title={copy.instructions.title}
-            hint={copy.instructions.hint}
-            image={petroStates.instructing}
-            onDone={go('audience')}
-          />
-        )}
-        {screen === 'audience' && (
-          <SelectorScreen
-            key="audience"
-            heading={copy.audience.heading}
-            options={audiences}
-            onSelect={(a) => {
-              setAudience(a)
-              setScreen('emotion-intro')
-            }}
-          />
-        )}
-        {screen === 'emotion-intro' && (
-          <InstructionScreen
-            key="emotion-intro"
-            title={copy.emotionIntro.title}
-            hint={copy.emotionIntro.hint}
-            image={petroStates.instructing}
-            onDone={go('emotion')}
-          />
-        )}
-        {screen === 'emotion' && (
-          <SelectorScreen
-            key="emotion"
-            heading={copy.emotion.heading}
-            options={emotions}
-            onSelect={onEmotionPicked}
-          />
-        )}
-        {screen === 'generating' && (
-          <GeneratingScreen key="generating" onDone={go('success')} />
-        )}
-        {screen === 'success' && (
-          <SuccessScreen
-            key="success"
-            demoImage={demoImage}
-            onReset={go('intro')}
-          />
-        )}
-      </AnimatePresence>
-    </Stage>
+    <div className="petro-page">
+      <FitStage>
+        <PetroDevice>
+          <div className="crt-flash" key={'f' + phase} />
+          {screen}
+        </PetroDevice>
+      </FitStage>
+    </div>
   )
 }

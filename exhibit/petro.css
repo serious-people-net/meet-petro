@@ -1,0 +1,274 @@
+/* ============================================================
+   PETRO — automated oil & gas marketer
+   Setup-assistant UI for an old round-CRT graphics machine.
+   ============================================================ */
+
+/* ---- brand font (Oli Frost design system) ---- */
+@font-face{ font-family:'Calibre'; src:url('fonts/Calibre-Light.woff') format('woff');
+  font-weight:300; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Calibre'; src:url('fonts/calibre-regular-webfont.woff') format('woff');
+  font-weight:400; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Calibre'; src:url('fonts/calibre-medium-webfont.woff') format('woff');
+  font-weight:500; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Calibre'; src:url('fonts/calibre-semibold-webfont.woff') format('woff');
+  font-weight:700; font-style:normal; font-display:swap; }
+
+:root{
+  --screen: #eef0f3;
+  --screen-edge: #e7e9ee;
+  --ink: #2c3038;
+  --ink-70: rgba(44,48,56,.72);
+  --ink-55: rgba(44,48,56,.55);
+  --ink-40: rgba(44,48,56,.40);
+  --ink-15: rgba(44,48,56,.15);
+  --mono: ui-monospace,'SF Mono','SFMono-Regular',Menlo,Consolas,'Liberation Mono',monospace;
+  --display:'Bricolage Grotesque', system-ui, sans-serif;
+  --body:'Calibre', system-ui, sans-serif;
+}
+
+/* ---- shared keyframes ---- */
+@keyframes petro-blink { 0%,48%{opacity:1} 49%,100%{opacity:0} }
+@keyframes petro-bob { 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-3.5px) } }
+@keyframes petro-cue { 0%,100%{ opacity:.42 } 50%{ opacity:.92 } }
+@keyframes petro-fadein { from{ opacity:0; transform:translateY(4px) } to{ opacity:1; transform:none } }
+
+.blink{ display:inline-block; width:.5em; height:1.05em; margin-left:.15em;
+  background: var(--ink-70); vertical-align:-.16em; animation: petro-blink 1.06s step-end infinite; }
+
+@media (prefers-reduced-motion: reduce){
+  .blink, .petro-art img, .pcue, .scr-fade{ animation:none !important; }
+}
+
+/* ============================================================
+   DEVICE — the white round-CRT computer
+   ============================================================ */
+.petro-device{
+  position: relative;
+  width: 604px;
+  margin: 0 auto;
+  padding: 60px 20px 46px;
+  background: linear-gradient(176deg,#ffffff 0%, #f6f6f7 56%, #eaeaec 100%);
+  clip-path: polygon(
+    50% 0%,   60% 0.6%, 70% 2.4%, 78% 5.6%, 84% 11%, 88% 19%, 90% 28%,
+    90% 44%,  90% 60%, 89% 74%, 89% 88%, 91% 96%, 95% 100%,
+    5% 100%,  9% 96%, 11% 88%, 11% 74%, 10% 60%, 10% 44%,
+    10% 28%,  12% 19%, 16% 11%, 22% 5.6%, 30% 2.4%, 40% 0.6%
+  );
+  box-shadow:
+    inset 0 4px 0 rgba(255,255,255,.9),
+    inset 0 -26px 40px rgba(0,0,0,.05);
+  filter:
+    drop-shadow(0 30px 46px rgba(38,40,55,.24))
+    drop-shadow(0 8px 16px rgba(38,40,55,.12));
+}
+.petro-device::after{
+  content:""; position:absolute; left:8%; right:8%; bottom:128px; height:1px;
+  background: rgba(0,0,0,.05);
+}
+
+/* ---- the round display (bezel + glass) ---- */
+.petro-crt{
+  width: 440px; height: 440px; margin: 0 auto;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 36%, #54545d 0%, #2d2d34 52%, #17171a 100%);
+  box-shadow:
+    0 12px 26px rgba(0,0,0,.34),
+    inset 0 2px 5px rgba(255,255,255,.16),
+    inset 0 -8px 16px rgba(0,0,0,.55);
+  position: relative;
+}
+.petro-crt::before{
+  content:""; position:absolute; inset:13px; border-radius:50%; z-index:3;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.10),
+    inset 0 0 0 4px rgba(0,0,0,.45),
+    inset 0 0 14px rgba(0,0,0,.6);
+  pointer-events:none;
+}
+.petro-glass{
+  width: 396px; height: 396px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 44%, var(--screen) 56%, var(--screen-edge) 100%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.28), inset 0 0 26px rgba(0,0,0,.05);
+}
+
+/* keyboard suggestion (welcome hero only) */
+.petro-keyboard{
+  width: 452px; margin: 30px auto 0;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.petro-krow{ display: flex; gap: 7px; justify-content: center; }
+.petro-key{
+  width: 40px; height: 29px; border-radius: 6px;
+  background: linear-gradient(180deg,#ffffff,#ededee);
+  box-shadow: 0 2px 0 rgba(0,0,0,.13), inset 0 1px 0 #fff, inset 0 0 0 1px rgba(0,0,0,.04);
+}
+.petro-key.mod{ background: linear-gradient(180deg,#e7e7ea,#d4d4d9); }
+.petro-key.sp{ flex: 1 1 auto; max-width: 150px; }
+
+/* ============================================================
+   SCREEN STAGE — 3-part vertical rhythm inside the round glass
+   ============================================================ */
+.scr{
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px;
+  text-align: center;
+  color: var(--ink);
+  padding: 42px 48px;
+  box-sizing: border-box;
+}
+.scr-fade{ animation: petro-fadein .4s ease both; }
+
+.scr .zone-top{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+.scr .zone-mid{ display:flex; align-items:center; justify-content:center; }
+.scr .zone-bot{ display:flex; flex-direction:column; align-items:center; gap:11px; }
+
+/* ---- type ---- */
+.scr .headline{
+  font-family: var(--display); font-weight:800;
+  font-size:33px; line-height:1.0; letter-spacing:-.6px;
+  color: var(--ink); max-width:280px; text-wrap:balance;
+}
+.scr .headline.sm{ font-size:27px; }
+.scr .subline{
+  font-family: var(--body); font-weight:400; font-size:16px; line-height:1.2;
+  color: var(--ink-55); max-width:240px; text-wrap:balance; letter-spacing:.1px;
+}
+
+/* ---- Petro art ---- */
+.petro-art{ display:flex; align-items:center; justify-content:center; }
+.petro-art img{
+  display:block; height:auto;
+  animation: petro-bob 3.6s ease-in-out infinite;
+}
+.petro-art img{ width:172px; }
+
+/* ---- system cue line ---- */
+.pcue{
+  font-family: var(--mono); font-weight:400; font-size:11px;
+  letter-spacing:.6px; line-height:1.5; text-transform:uppercase;
+  color: var(--ink-55);
+  display:inline-flex; align-items:center;
+}
+.pcue.glow{ animation: petro-cue 2.2s ease-in-out infinite; }
+.pcue .k{ color: var(--ink-70); font-weight:400; }
+
+/* ============================================================
+   SELECTOR — ‹ value › with chevrons
+   ============================================================ */
+.selector{ display:flex; align-items:center; justify-content:center; gap:14px; }
+.selector .chev{
+  appearance:none; border:none; background:transparent; cursor:pointer;
+  width:26px; height:26px; padding:0; color: var(--ink-40);
+  display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  transition: color .15s, transform .15s;
+}
+.selector .chev:hover{ color: var(--ink); }
+.selector .chev:active{ transform: scale(.86); }
+.selector .chev svg{ width:17px; height:17px; }
+.selector .chev.pulse{ animation: petro-cue 2.4s ease-in-out infinite; }
+.selector .value{
+  font-family: var(--display); font-weight:500;
+  font-size:21px; line-height:1.04; letter-spacing:-.2px;
+  color: var(--ink); width:128px; min-height:2.1em; text-wrap:balance;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ============================================================
+   KEY HINTS — flat, retro glyphs (welcome screen only)
+   ============================================================ */
+.legend{
+  display:flex; align-items:center; gap:26px;
+  font-family: var(--mono); font-size:11px; letter-spacing:.8px; text-transform:uppercase;
+  color: var(--ink-55);
+}
+.legend .seg{ display:inline-flex; align-items:baseline; gap:8px; }
+.kg{ font-family: var(--display); font-weight:500; font-size:13px; line-height:1; color: var(--ink-70); }
+.kg.ret{ font-size:16px; position:relative; top:2px; }
+.kg.pulse{ animation: petro-cue 2s ease-in-out infinite; }
+
+/* ============================================================
+   CRT POWER-ON — plays each time the welcome screen appears
+   ============================================================ */
+@keyframes crt-black{ 0%,40%{opacity:1} 74%,100%{opacity:0} }
+@keyframes crt-beam{
+  0%   { transform: scale(0, .016); opacity:1; }
+  16%  { transform: scale(1, .016); opacity:1; }
+  44%  { transform: scale(1, 1);    opacity:.95; }
+  100% { transform: scale(1, 1);    opacity:0; }
+}
+.poweron{ position:absolute; inset:0; z-index:7; pointer-events:none; }
+.poweron .pb{ position:absolute; inset:0; background:#0b0c0f;
+  animation: crt-black .76s ease-out forwards; }
+.poweron .pl{ position:absolute; inset:0; transform-origin:center center;
+  background: radial-gradient(135% 56% at 50% 50%, #ffffff 0%, #f1f3f6 52%, rgba(238,240,243,0) 100%);
+  animation: crt-beam .76s ease-out forwards; }
+@media (prefers-reduced-motion: reduce){ .poweron{ display:none; } }
+
+/* ============================================================
+   BLOB SCREEN — morphing ink shape (boot transition)
+   ============================================================ */
+@keyframes blob-morph{
+  0%,100%{ border-radius:42% 58% 63% 37% / 47% 42% 58% 53%; }
+  25%    { border-radius:58% 42% 38% 62% / 38% 58% 42% 62%; }
+  50%    { border-radius:36% 64% 55% 45% / 62% 36% 64% 38%; }
+  75%    { border-radius:55% 45% 40% 60% / 44% 62% 38% 56%; }
+}
+@keyframes blob-breathe{
+  0%,100%{ transform:scale(1) rotate(0deg); }
+  50%    { transform:scale(1.07) rotate(10deg); }
+}
+.blob-screen{ gap:28px; }
+.blob{
+  width:126px; height:126px; background: var(--ink);
+  border-radius:42% 58% 63% 37% / 47% 42% 58% 53%;
+  animation: blob-morph 3.6s ease-in-out infinite, blob-breathe 6s ease-in-out infinite;
+  box-shadow: 0 8px 22px rgba(44,48,56,.18);
+}
+@media (prefers-reduced-motion: reduce){ .blob{ animation:none; } }
+
+/* ============================================================
+   CRT SCREEN-CHANGE FLASH (subtle)
+   ============================================================ */
+@keyframes crt-flash{ 0%{opacity:.40} 100%{opacity:0} }
+.crt-flash{
+  position:absolute; inset:0; z-index:6; pointer-events:none; background:#fff;
+  animation: crt-flash .24s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce){ .crt-flash{ animation:none; opacity:0; } }
+
+/* ============================================================
+   GALLERY PAGE + FIT-TO-VIEWPORT STAGE
+   ============================================================ */
+.petro-page{
+  margin:0; min-height:100vh; overflow:hidden;
+  background: radial-gradient(125% 95% at 50% 28%, #ececed 0%, #dcdce1 58%, #cdced3 100%);
+}
+.fit-stage{ width:100vw; height:100vh; position:relative; overflow:hidden; }
+.fit-inner{ position:absolute; top:0; left:0; transform-origin:0 0; }
+.selector .value-fade{ animation: petro-fadein .26s ease both; }
+
+/* ============================================================
+   LOADING BAR — classic chunky monochrome meter
+   ============================================================ */
+.loadbar{
+  width: 188px; height: 16px; box-sizing:border-box;
+  border: 1.5px solid var(--ink-70);
+  border-radius: 2px; padding: 2px;
+  background: transparent; overflow:hidden;
+}
+.loadbar .fill{
+  height: 100%; width: 0%;
+  background-color: var(--ink);
+  background-image: repeating-linear-gradient(90deg,
+    rgba(255,255,255,0) 0 5px, rgba(238,240,243,.30) 5px 6px);
+  transition: width .12s linear;
+}
+.loadbar.appear{ animation: petro-fadein .5s ease both; }
+.reset-hint{ font-size:14px; color: var(--ink-55); animation: petro-fadein .4s ease both; }

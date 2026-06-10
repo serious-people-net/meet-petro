@@ -30,9 +30,6 @@ Petro makes it easy.
 
 - Slightly retro, in the Severance / Silo / Fallout sense — vintage terminal
   futurism, but understated. Don't over-egg it.
-- White/off-white circle on black; illustrations are black line art.
-- Chunky old-style serif for display text, monospace for bracketed key
-  hints (`[PRESS ENTER TO BEGIN]`).
 - Consistent screen anatomy: text top, illustration middle, element bottom.
 - Stick to the given copy. No emojis, no embellishment. Understated,
   slightly opaque and curious.
