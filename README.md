@@ -2,7 +2,7 @@
 
 A gallery installation: Petro, your automated oil and gas marketer, helps
 you design a fossil-fuel ad. Pick an audience and an emotion to manipulate;
-Petro prints a pre-generated idea (a "Decept").
+Petro prints a pre-generated idea (a "Deceipt").
 
 Read [docs/BRIEF.md](docs/BRIEF.md) for the full concept and
 [docs/PI-SETUP.md](docs/PI-SETUP.md) for the exhibit hardware.
