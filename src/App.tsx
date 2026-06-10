@@ -1,122 +1,113 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useCallback, useEffect, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import { Stage } from './components/Stage'
+import { BootScreen } from './screens/BootScreen'
+import { IntroScreen } from './screens/IntroScreen'
+import { InstructionScreen } from './screens/InstructionScreen'
+import { SelectorScreen } from './screens/SelectorScreen'
+import { GeneratingScreen } from './screens/GeneratingScreen'
+import { SuccessScreen } from './screens/SuccessScreen'
+import { audiences, emotions, type Option } from './data/options'
+import { copy } from './data/copy'
+import { petroStates } from './data/petro'
+import { loadMatrix, requestPrint } from './lib/print'
 
-function App() {
-  const [count, setCount] = useState(0)
+// The whole app is a linear state machine. Boot runs once per page load;
+// every reset afterwards returns to the intro.
+
+type ScreenName =
+  | 'boot'
+  | 'intro'
+  | 'audience-intro'
+  | 'audience'
+  | 'emotion-intro'
+  | 'emotion'
+  | 'generating'
+  | 'success'
+
+export default function App() {
+  const [screen, setScreen] = useState<ScreenName>('boot')
+  const [audience, setAudience] = useState<Option | null>(null)
+  const [demoImage, setDemoImage] = useState<string | null>(null)
+
+  useEffect(() => {
+    void loadMatrix()
+  }, [])
+
+  const go = useCallback((s: ScreenName) => () => setScreen(s), [])
+
+  const onEmotionPicked = useCallback(
+    (emotion: Option) => {
+      // Fire the print as the theatre starts — the result (a demo image,
+      // or nothing because paper is coming out of a real printer) is
+      // ready long before the loading bar finishes.
+      if (audience) {
+        void requestPrint(audience.id, emotion.id).then((r) =>
+          setDemoImage(r.demoImage),
+        )
+      }
+      setScreen('generating')
+    },
+    [audience],
+  )
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <Stage>
+      <AnimatePresence mode="wait">
+        {screen === 'boot' && (
+          <BootScreen key="boot" onDone={go('intro')} />
+        )}
+        {screen === 'intro' && (
+          <IntroScreen key="intro" onBegin={go('audience-intro')} />
+        )}
+        {screen === 'audience-intro' && (
+          <InstructionScreen
+            key="audience-intro"
+            title={copy.instructions.title}
+            hint={copy.instructions.hint}
+            image={petroStates.instructing}
+            onDone={go('audience')}
+          />
+        )}
+        {screen === 'audience' && (
+          <SelectorScreen
+            key="audience"
+            heading={copy.audience.heading}
+            options={audiences}
+            onSelect={(a) => {
+              setAudience(a)
+              setScreen('emotion-intro')
+            }}
+          />
+        )}
+        {screen === 'emotion-intro' && (
+          <InstructionScreen
+            key="emotion-intro"
+            title={copy.emotionIntro.title}
+            hint={copy.emotionIntro.hint}
+            image={petroStates.instructing}
+            onDone={go('emotion')}
+          />
+        )}
+        {screen === 'emotion' && (
+          <SelectorScreen
+            key="emotion"
+            heading={copy.emotion.heading}
+            options={emotions}
+            onSelect={onEmotionPicked}
+          />
+        )}
+        {screen === 'generating' && (
+          <GeneratingScreen key="generating" onDone={go('success')} />
+        )}
+        {screen === 'success' && (
+          <SuccessScreen
+            key="success"
+            demoImage={demoImage}
+            onReset={go('intro')}
+          />
+        )}
+      </AnimatePresence>
+    </Stage>
   )
 }
-
-export default App

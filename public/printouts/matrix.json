@@ -1,0 +1,6 @@
+{
+  "_comment": "Maps '<audienceId>.<emotionId>' to a printout file in this folder. Read by the frontend (demo mode display) and by the Flask server (printing). 'default' is the fallback for any unmapped combination.",
+  "default": "fear-divorcedmen.png",
+  "divorced-men.fear": "fear-divorcedmen.png",
+  "concerned-mothers.gratitude": "aspiration-mums.png"
+}
