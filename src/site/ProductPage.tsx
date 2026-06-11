@@ -46,21 +46,21 @@ function HeroDevice() {
 const FEATURES = [
   {
     icon: Megaphone,
-    file: 'training_data.txt',
-    title: 'Trained on the classics',
-    body: 'Decades of lobbying and propaganda, created by the best advertising and PR firms in the business — distilled into one friendly agent.',
+    file: "TRAINING_DATA.TXT",
+    title: "Trained on the classics",
+    body: "Trained on decades of deception by Advertising and PR firms, Petro learns from the best.",
   },
   {
     icon: SlidersHorizontal,
-    file: 'controls.sit',
-    title: 'Pick audience. Pick emotion.',
-    body: 'Simply choose the audience and emotion you want to manipulate. Petro handles the strategic thinking.',
+    file: "CONTROLS.SIT",
+    title: "Target easy audiences",
+    body: "Simply choose the audience and emotion you want to manipulate. Petro handles the psyops.",
   },
   {
     icon: Printer,
-    file: 'output.decept',
-    title: 'Decepts in seconds',
-    body: 'Petro draws and prints an idea in seconds. These print-outs are known as ‘Decepts’.',
+    file: "OUTPUT.DECEIPT",
+    title: "Say bye to paperless",
+    body: "Petro prints his creations onto deluxe 300gsm card. No tree spared.",
   },
 ]
 
@@ -73,18 +73,16 @@ export default function ProductPage() {
           <img src={oilcanUrl} alt="" className="brand-mark" />
           <span className="brand-name">Petro</span>
         </span>
-        <a className="nav-cta" href={DEMO_URL}>Try the demo</a>
+        <a className="nav-cta" href={DEMO_URL}>TRY THE DEMO</a>
       </nav>
 
       <header className="hero">
-        <p className="eyebrow">[ Introducing automated oil &amp; gas marketing ]</p>
+        <p className="eyebrow">[ Meet Petro ]</p>
         <h1>
-          No human should ever have to promote the downfall of the planet they live on.{' '}
-          <span className="accent">So we made an agent to do it.</span>
+          <span className="accent">Deceipt. Delay Deception.</span> Petro makes it fun and easy
         </h1>
         <p className="hero-sub">
-          Petro lets you automate your agency&rsquo;s oil and gas marketing.
-          Denial. Delay. Deception. Petro makes it easy.
+          Petro is an automated oil and gas marketer that helps your clients keep on drilling.
         </p>
         <div className="hero-actions">
           <a className="btn" href={DEMO_URL}>Meet Petro <ArrowRight aria-hidden="true" /></a>
@@ -94,10 +92,9 @@ export default function ProductPage() {
 
       <section className="statement">
         <MacWindow title="Petro.app">
-          <h2>Consciousness, without the conscience.</h2>
+          <h2>Take the science out of &quot;conscience&quot;</h2>
           <p>
-            No longer will agencies have to deal with staff walk-outs and
-            &ldquo;moral objections&rdquo;. Petro never wavers, never doubts,
+            Tired of staff walkouts and &ldquo;moral objections&rdquo;? Petro never wavers, never doubts,
             and never asks to see the science.
           </p>
         </MacWindow>
@@ -116,14 +113,12 @@ export default function ProductPage() {
       <section className="invite">
         <p className="eyebrow">[ Demo day ]</p>
         <h2>See the future of fossil fuel marketing for yourself.</h2>
-        <p className="invite-sub">We are excited to invite you to try Petro right now, from the comfort of your own browser.</p>
-        <a className="btn" href={DEMO_URL}>Try the demo <ArrowRight aria-hidden="true" /></a>
+        <p className="invite-sub">Come to our Demo Day on the 9th July at [Location].</p>
+        <a className="btn" href={DEMO_URL}>RSVP <ArrowRight aria-hidden="true" /></a>
       </section>
 
       <footer className="site-footer">
-        <span>meetpetro.com</span>
-        <span className="dot" aria-hidden="true" />
-        <span>A Serious People project</span>
+        <span>Made by Serious People</span>
       </footer>
 
     </div>
