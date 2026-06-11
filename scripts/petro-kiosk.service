@@ -1,0 +1,26 @@
+# Petro exhibit kiosk. Installed by pi-setup.sh (which fills in __USER__ /
+# __REPO__). Deliberately NOT enabled by default — start it by hand while
+# testing, `systemctl enable` it once you want autostart at boot.
+[Unit]
+Description=Petro kiosk (cage + chromium)
+After=network-online.target seatd.service
+Wants=network-online.target seatd.service
+
+[Service]
+Type=simple
+User=__USER__
+# seatd (not logind) provides the seat for this headless service, so cage can
+# grab the GPU + input without a login session sitting on a VT. The user must
+# be in the group that owns /run/seatd.sock (video, on Pi OS).
+SupplementaryGroups=video render input
+Environment=LIBSEAT_BACKEND=seatd
+# cage/Wayland needs a writable runtime dir for its socket; systemd creates
+# /run/petro-kiosk owned by the service user and cleans it up on stop.
+RuntimeDirectory=petro-kiosk
+Environment=XDG_RUNTIME_DIR=/run/petro-kiosk
+ExecStart=__REPO__/scripts/pi-kiosk.sh
+# On exit you land on a TTY to maintain things; don't respawn the browser.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
