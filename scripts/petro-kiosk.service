@@ -3,25 +3,23 @@
 # testing, `systemctl enable` it once you want autostart at boot.
 [Unit]
 Description=Petro kiosk (cage + chromium)
-After=network-online.target seatd.service systemd-user-sessions.target
-Wants=network-online.target
+After=network-online.target seatd.service
+Wants=network-online.target seatd.service
 
 [Service]
 Type=simple
 User=__USER__
-# Open a real login session on tty1 so logind gives cage a seat + a
-# per-user XDG_RUNTIME_DIR — this is what lets the compositor grab the
-# HDMI output and keyboard when launched headless (e.g. over SSH).
-PAMName=login
-TTYPath=/dev/tty1
-TTYReset=yes
-TTYVHangup=yes
-StandardInput=tty
-StandardOutput=journal
-StandardError=journal
-ExecStartPre=/usr/bin/chvt 1
+# seatd (not logind) provides the seat for this headless service, so cage can
+# grab the GPU + input without a login session sitting on a VT. The user must
+# be in the group that owns /run/seatd.sock (video, on Pi OS).
+SupplementaryGroups=video render input
+Environment=LIBSEAT_BACKEND=seatd
+# cage/Wayland needs a writable runtime dir for its socket; systemd creates
+# /run/petro-kiosk owned by the service user and cleans it up on stop.
+RuntimeDirectory=petro-kiosk
+Environment=XDG_RUNTIME_DIR=/run/petro-kiosk
 ExecStart=__REPO__/scripts/pi-kiosk.sh
-# Don't respawn the browser — on exit you land on a TTY to maintain things.
+# On exit you land on a TTY to maintain things; don't respawn the browser.
 Restart=no
 
 [Install]
