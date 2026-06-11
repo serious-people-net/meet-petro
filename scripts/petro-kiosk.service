@@ -1,0 +1,28 @@
+# Petro exhibit kiosk. Installed by pi-setup.sh (which fills in __USER__ /
+# __REPO__). Deliberately NOT enabled by default — start it by hand while
+# testing, `systemctl enable` it once you want autostart at boot.
+[Unit]
+Description=Petro kiosk (cage + chromium)
+After=network-online.target seatd.service systemd-user-sessions.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+# Open a real login session on tty1 so logind gives cage a seat + a
+# per-user XDG_RUNTIME_DIR — this is what lets the compositor grab the
+# HDMI output and keyboard when launched headless (e.g. over SSH).
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+ExecStartPre=/usr/bin/chvt 1
+ExecStart=__REPO__/scripts/pi-kiosk.sh
+# Don't respawn the browser — on exit you land on a TTY to maintain things.
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
