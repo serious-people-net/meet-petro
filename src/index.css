@@ -146,7 +146,8 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
 /* ---- Petro art ---- */
 .petro-art { display: flex; align-items: center; justify-content: center; }
 .petro-art img {
-  display: block; width: 162px; height: auto;
+  display: block; width: 148px; height: 164px;
+  object-fit: contain; object-position: center center;
   animation: petro-bob 3.6s ease-in-out infinite;
 }
 
@@ -175,7 +176,7 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
 .selector .value {
   font-family: var(--display); font-weight: 500;
   font-size: 20px; line-height: 1.04; letter-spacing: -.2px;
-  color: var(--ink); width: 122px; min-height: 2.1em; text-wrap: balance;
+  color: var(--ink); width: 170px; min-height: 2.1em; text-wrap: balance;
   display: flex; align-items: center; justify-content: center;
 }
 .selector .value-fade { animation: petro-fadein .26s ease both; }

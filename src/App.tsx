@@ -1,6 +1,37 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
 import { PetroDevice } from './PetroDevice'
-import oilcanUrl from './assets/petro-oilcan-cut.png'
+
+/* ---- mascot image registry ----------------------------------------- */
+const mascotModules = import.meta.glob<string>('./assets/OILY_MASCOTS_*.png', { eager: true, import: 'default' })
+const MASCOTS: Record<string, string> = {}
+for (const [path, url] of Object.entries(mascotModules)) {
+  const name = path.match(/OILY_MASCOTS_(.+)\.png$/)?.[1]
+  if (name) MASCOTS[name] = url
+}
+
+const AUDIENCE_MASCOT: Record<string, string> = {
+  'Concerned Moms':        'MUM',
+  'Disenfranchised Youth': 'GOTH',
+  'Divorced Men':          'DIVORCE',
+  'Hard-Working Citizens': 'WORKER',
+}
+const EMOTION_MASCOT: Record<string, string> = {
+  'Anger':     'ANGER',
+  'Nostalgia': 'NOSTALGIC',
+  'Fear':      'FEAR',
+  'Hope':      'HOPEFUL',
+}
+
+function getMascotSrc(audience?: string, emotion?: string): string {
+  const fallback = MASCOTS['OILY'] ?? ''
+  if (!audience) return fallback
+  const char = AUDIENCE_MASCOT[audience]
+  if (!char) return fallback
+  const emo = emotion ? (EMOTION_MASCOT[emotion] ?? 'DEFAULT') : 'DEFAULT'
+  // DAD-ANGER covers the Divorced Men + Anger variant
+  if (char === 'DIVORCE' && emo === 'ANGER') return MASCOTS['DAD-ANGER'] ?? fallback
+  return MASCOTS[`${char}-${emo}`] ?? fallback
+}
 
 /* ---- content ------------------------------------------------------- */
 const AUDIENCES = ['Concerned Moms', 'Disenfranchised Youth', 'Divorced Men', 'Hard-Working Citizens']
@@ -41,7 +72,7 @@ const FLOW: FlowNode[] = [
   { type: 'loader', headlines: ['Great choice.'], dur: 2200, sound: 'cheer' },
   { type: 'select', store: 'emotion', title: 'What emotion\nshould we\nmanipulate?', options: EMOTIONS, titleXs: true },
   { type: 'loader', headlines: ["Now we're\ncooking!"], dur: 2200, sound: 'cheer' },
-  { type: 'loader', think: true, dur: 6400,
+  { type: 'loader', think: true, dur: 5000,
     headlines: ['Having deep\nstrategic thoughts…', 'Thinking of\nworld-first ideas', 'Cutting down\nsome trees…'] },
   { type: 'success' },
   { type: 'blob', dur: 3200, sound: 'none' },
@@ -119,10 +150,10 @@ const Sound = (() => {
 })()
 
 /* ---- shared bits --------------------------------------------------- */
-function PetroArt({ onClick }: { onClick?: () => void }) {
+function PetroArt({ onClick, src }: { onClick?: () => void; src?: string }) {
   return (
     <div className="petro-art" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
-      <img src={oilcanUrl} alt="Petro, a smiling oil drum" />
+      <img src={src ?? MASCOTS['OILY']} alt="Petro" />
     </div>
   )
 }
@@ -144,7 +175,7 @@ const ChevR = () => (
 )
 
 /* ---- screens ------------------------------------------------------- */
-function WelcomeScreen({ onBegin }: { onBegin: () => void }) {
+function WelcomeScreen({ onBegin, mascotSrc }: { onBegin: () => void; mascotSrc?: string }) {
   useEffect(() => { Sound.power() }, [])
   const begin = () => { Sound.select(); onBegin() }
   return (
@@ -154,7 +185,7 @@ function WelcomeScreen({ onBegin }: { onBegin: () => void }) {
         <div className="headline">Hi, I&rsquo;m Petro.</div>
         <div className="subline">Your automated oil &amp; gas marketer</div>
       </div>
-      <div className="zone-mid"><PetroArt /></div>
+      <div className="zone-mid"><PetroArt src={mascotSrc} /></div>
       <div className="zone-bot">
         <div className="legend">
           <span className="seg"><span className="kg">&#9664;&#8198;&#9654;</span>Browse</span>
@@ -165,7 +196,7 @@ function WelcomeScreen({ onBegin }: { onBegin: () => void }) {
   )
 }
 
-function LoaderScreen({ node, onDone }: { node: FlowNode; onDone: () => void }) {
+function LoaderScreen({ node, onDone, mascotSrc }: { node: FlowNode; onDone: () => void; mascotSrc?: string }) {
   const [p, setP] = useState(0)
   const fillRef = useRef<HTMLDivElement>(null)
   const done = useRef(false)
@@ -199,7 +230,7 @@ function LoaderScreen({ node, onDone }: { node: FlowNode; onDone: () => void }) 
           <Lines text={headlines[hi]} />
         </div>
       </div>
-      <div className="zone-mid"><PetroArt /></div>
+      <div className="zone-mid"><PetroArt src={mascotSrc} /></div>
       <div className="zone-bot">
         <div className="loadbar"><div className="fill" ref={fillRef} /></div>
       </div>
@@ -207,8 +238,8 @@ function LoaderScreen({ node, onDone }: { node: FlowNode; onDone: () => void }) 
   )
 }
 
-function SelectScreen({ node, index, onChange, onConfirm }: {
-  node: FlowNode; index: number; onChange: (i: number) => void; onConfirm: () => void
+function SelectScreen({ node, index, onChange, onConfirm, mascotSrc }: {
+  node: FlowNode; index: number; onChange: (i: number) => void; onConfirm: () => void; mascotSrc?: string
 }) {
   const opts = node.options!
   useEffect(() => { if (node.landNote) Sound.land() }, [])
@@ -219,7 +250,7 @@ function SelectScreen({ node, index, onChange, onConfirm }: {
       <div className="zone-top">
         <div className={`headline sm${node.titleXs ? ' xs' : ''}`}><Lines text={node.title!} /></div>
       </div>
-      <div className="zone-mid"><PetroArt onClick={confirm} /></div>
+      <div className="zone-mid"><PetroArt onClick={confirm} src={mascotSrc} /></div>
       <div className="zone-bot">
         <div className="selector">
           <button className="chev pulse" onClick={() => move(-1)} aria-label="Previous"><ChevL /></button>
@@ -231,7 +262,7 @@ function SelectScreen({ node, index, onChange, onConfirm }: {
   )
 }
 
-function SuccessScreen({ onReset, art }: { onReset: () => void; art?: string | null }) {
+function SuccessScreen({ onReset, art, mascotSrc }: { onReset: () => void; art?: string | null; mascotSrc?: string }) {
   const cb = useRef(onReset); cb.current = onReset
   const [showBar, setShowBar] = useState(false)
   const [resetting, setResetting] = useState(false)
@@ -261,14 +292,14 @@ function SuccessScreen({ onReset, art }: { onReset: () => void; art?: string | n
   return (
     <div className="scr scr-fade" onClick={reset}>
       <div className="zone-top">
-        <div className="headline" key={resetting ? 'r' : 'i'} style={{ animation: 'petro-fadein .3s ease both' }}>
-          <Lines text={resetting ? "Let’s make some\nmore ideas…" : "Your idea\nis ready"} />
+        <div className={`headline${resetting ? ' sm' : ''}`} key={resetting ? 'r' : 'i'} style={{ animation: 'petro-fadein .3s ease both' }}>
+          <Lines text={resetting ? "Let's make some\nmore ideas…" : "Your idea\nis ready"} />
         </div>
       </div>
       <div className="zone-mid">
         {art
           ? <div className="decept"><img src={art} alt="Your generated Decept" /></div>
-          : <PetroArt />}
+          : <PetroArt src={mascotSrc} />}
       </div>
       <div className="zone-bot">
         {showBar && <div className="loadbar appear"><div className="fill" ref={fillRef} /></div>}
@@ -405,11 +436,25 @@ export default function App() {
     return () => { clearTimeout(t); window.removeEventListener('keydown', bump) }
   }, [phase, goReset])
 
+  // Resolve which mascot image to show at the current phase
+  let mascotSrc = MASCOTS['OILY'] ?? ''
+  if (node.type === 'select' && node.store === 'audience') {
+    mascotSrc = getMascotSrc(node.options![selIndex])
+  } else if (node.type === 'select' && node.store === 'emotion') {
+    mascotSrc = getMascotSrc(sel.audience, node.options![selIndex])
+  } else if (node.type === 'loader' && node.think) {
+    mascotSrc = MASCOTS['OILY-ARTIST'] ?? MASCOTS['OILY'] ?? ''
+  } else if (sel.audience && sel.emotion) {
+    mascotSrc = getMascotSrc(sel.audience, sel.emotion)
+  } else if (sel.audience) {
+    mascotSrc = getMascotSrc(sel.audience)
+  }
+
   let screen: React.ReactNode
-  if      (node.type === 'welcome') screen = <WelcomeScreen onBegin={advance} />
-  else if (node.type === 'loader')  screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} />
-  else if (node.type === 'select')  screen = <SelectScreen node={node} index={selIndex} onChange={setSelIndex} onConfirm={confirm} />
-  else if (node.type === 'success') screen = <SuccessScreen onReset={goReset} art={KIOSK ? null : art} />
+  if      (node.type === 'welcome') screen = <WelcomeScreen onBegin={advance} mascotSrc={mascotSrc} />
+  else if (node.type === 'loader')  screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} mascotSrc={mascotSrc} />
+  else if (node.type === 'select')  screen = <SelectScreen node={node} index={selIndex} onChange={setSelIndex} onConfirm={confirm} mascotSrc={mascotSrc} />
+  else if (node.type === 'success') screen = <SuccessScreen onReset={goReset} art={KIOSK ? null : art} mascotSrc={mascotSrc} />
   else                              screen = <BlobScreen key={'s' + phase} dur={node.dur!} onDone={toStart} />
 
   const inner = <><div className="crt-flash" key={'f' + phase} />{screen}</>
