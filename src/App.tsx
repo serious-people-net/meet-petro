@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react
 import { PetroDevice } from './PetroDevice'
 
 /* ---- mascot image registry ----------------------------------------- */
-const mascotModules = import.meta.glob<string>('./assets/OILY_MASCOTS_*.png', { eager: true, import: 'default' })
+const mascotModules = import.meta.glob<string>('./assets/mascots/*.png', { eager: true, import: 'default' })
 const MASCOTS: Record<string, string> = {}
 for (const [path, url] of Object.entries(mascotModules)) {
-  const name = path.match(/OILY_MASCOTS_(.+)\.png$/)?.[1]
+  const name = path.match(/\/([^/]+)\.png$/)?.[1]
   if (name) MASCOTS[name] = url
 }
 
@@ -20,6 +20,7 @@ const EMOTION_MASCOT: Record<string, string> = {
   'Nostalgia': 'NOSTALGIC',
   'Fear':      'FEAR',
   'Hope':      'HOPEFUL',
+  'Pride':     'DEFAULT',
 }
 
 function getMascotSrc(audience?: string, emotion?: string): string {
@@ -35,7 +36,7 @@ function getMascotSrc(audience?: string, emotion?: string): string {
 
 /* ---- content ------------------------------------------------------- */
 const AUDIENCES = ['Concerned Moms', 'Disenfranchised Youth', 'Divorced Men', 'Hard-Working Citizens']
-const EMOTIONS  = ['Anger', 'Nostalgia', 'Fear', 'Hope']
+const EMOTIONS  = ['Anger', 'Nostalgia', 'Fear', 'Pride', 'Hope']
 
 const AUDIENCE_IDS: Record<string, string> = {
   'Concerned Moms':        'concerned-mothers',
@@ -47,6 +48,7 @@ const EMOTION_IDS: Record<string, string> = {
   'Anger':     'anger',
   'Nostalgia': 'nostalgia',
   'Fear':      'fear',
+  'Pride':     'pride',
   'Hope':      'hope',
 }
 
@@ -85,6 +87,8 @@ const KIOSK = (() => {
   const q = new URLSearchParams(window.location.search)
   return q.has('app') || q.has('kiosk')
 })()
+
+const DEBUG = new URLSearchParams(window.location.search).has('debug')
 
 /* ---- sound --------------------------------------------------------- */
 const Sound = (() => {
@@ -379,8 +383,117 @@ async function resolveDecept(audienceLabel: string, emotionLabel: string): Promi
   } catch { return null }
 }
 
+/* ---- poster registry (for debug view) ------------------------------ */
+const posterModules = import.meta.glob<string>('./assets/posters/*.png', { eager: true, import: 'default' })
+const POSTERS: Record<string, string> = {}
+for (const [path, url] of Object.entries(posterModules)) {
+  const name = path.match(/\/([^/]+)\.png$/)?.[1]
+  if (name) POSTERS[name] = url
+}
+
+function DebugPage() {
+  const emotions = Object.keys(EMOTION_IDS)
+  const audiences = Object.keys(AUDIENCE_IDS)
+  const emotionKeys = Object.values(EMOTION_IDS)
+  const audienceKeys = Object.values(AUDIENCE_IDS)
+
+  const matrix: Record<string, string> = {
+    'divorced-men.fear': 'WIFE', 'divorced-men.nostalgia': 'NEW-PETROL-SMELL',
+    'divorced-men.anger': 'POLYESTER-TROUSERS', 'divorced-men.pride': 'MOILBORO-MAN',
+    'divorced-men.hope': 'GRETA-SUSTAINABLE-FUEL',
+    'concerned-mothers.fear': 'TURBINE-CANCER', 'concerned-mothers.nostalgia': 'CUP-OF-OIL',
+    'concerned-mothers.anger': 'EVIL', 'concerned-mothers.pride': 'NATURAL-GAS',
+    'concerned-mothers.hope': 'DOLPHIN-PLASTIC',
+    'disenfranchised-youth.fear': 'VIRAL-TREND', 'disenfranchised-youth.nostalgia': 'STORIES',
+    'disenfranchised-youth.anger': 'POTATO-CLOCK', 'disenfranchised-youth.pride': 'AMERICAN-GIRLS',
+    'disenfranchised-youth.hope': 'CLIMATE-APP',
+    'hard-working-citizens.fear': 'SUN-COUCH', 'hard-working-citizens.nostalgia': 'SOLAR-FARM',
+    'hard-working-citizens.anger': 'GOLF', 'hard-working-citizens.pride': 'NET-ZERO',
+    'hard-working-citizens.hope': 'YORKSHIRE-PUDDING',
+  }
+
+  const mascotVariants = ['DEFAULT', 'FEAR', 'ANGER', 'NOSTALGIC', 'HOPEFUL']
+
+  return (
+    <div style={{ fontFamily: 'monospace', padding: 24, background: '#111', color: '#eee', minHeight: '100vh' }}>
+      <h1 style={{ marginBottom: 8 }}>Petro Debug — Posters</h1>
+      <table style={{ borderCollapse: 'collapse', marginBottom: 48 }}>
+        <thead>
+          <tr>
+            <th style={th} />
+            {emotions.map((e) => <th key={e} style={th}>{e}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {audiences.map((aud, ai) => (
+            <tr key={aud}>
+              <td style={{ ...th, textAlign: 'left' }}>{aud}</td>
+              {emotionKeys.map((emo, ei) => {
+                const key = `${audienceKeys[ai]}.${emo}`
+                const posterName = matrix[key]
+                const src = posterName ? POSTERS[posterName] : undefined
+                return (
+                  <td key={emo} style={{ border: '1px solid #333', padding: 8, textAlign: 'center', verticalAlign: 'top' }}>
+                    {src
+                      ? <img src={src} alt={posterName} style={{ width: 140, display: 'block', marginBottom: 4 }} />
+                      : <div style={{ width: 140, height: 100, background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f66' }}>missing</div>}
+                    <div style={{ fontSize: 10, color: '#aaa' }}>{posterName}</div>
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <h1 style={{ marginBottom: 8 }}>Petro Debug — Mascots</h1>
+      <table style={{ borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            <th style={th} />
+            {mascotVariants.map((v) => <th key={v} style={th}>{v}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {(['DIVORCE', 'MUM', 'GOTH', 'WORKER'] as const).map((char) => (
+            <tr key={char}>
+              <td style={{ ...th, textAlign: 'left' }}>{char}</td>
+              {mascotVariants.map((v) => {
+                const key = char === 'DIVORCE' && v === 'ANGER' ? 'DAD-ANGER' : `${char}-${v}`
+                const src = MASCOTS[key]
+                return (
+                  <td key={v} style={{ border: '1px solid #333', padding: 8, textAlign: 'center' }}>
+                    {src
+                      ? <img src={src} alt={key} style={{ height: 120, display: 'block', margin: '0 auto 4px' }} />
+                      : <div style={{ width: 80, height: 100, background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f66' }}>missing</div>}
+                    <div style={{ fontSize: 10, color: '#aaa' }}>{key}</div>
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+          <tr>
+            <td style={{ ...th, textAlign: 'left' }}>OILY</td>
+            {(['OILY', 'OILY-ARTIST', 'OILY-ARTIST-ALT', 'OILY-THUMBS-UP', 'OILY-PRINTING'] as const).map((key) => (
+              <td key={key} style={{ border: '1px solid #333', padding: 8, textAlign: 'center' }}>
+                {MASCOTS[key]
+                  ? <img src={MASCOTS[key]} alt={key} style={{ height: 120, display: 'block', margin: '0 auto 4px' }} />
+                  : <div style={{ width: 80, height: 100, background: '#333', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f66' }}>missing</div>}
+                <div style={{ fontSize: 10, color: '#aaa' }}>{key}</div>
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+const th: React.CSSProperties = { border: '1px solid #333', padding: '8px 12px', whiteSpace: 'nowrap' }
+
 /* ---- state machine ------------------------------------------------- */
 export default function App() {
+  if (DEBUG) return <DebugPage />
+
   const [phase, setPhase]       = useState(0)
   const [selIndex, setSelIndex] = useState(0)
   const [sel, setSel]           = useState<Record<string, string>>({})
@@ -392,7 +505,7 @@ export default function App() {
 
   const advance = useCallback(() => setPhase((p) => (p + 1) % FLOW.length), [])
   const goReset = useCallback(() => setPhase(RESET_INDEX), [])
-  const toStart = useCallback(() => { setArt(null); setPhase(0) }, [])
+  const toStart = useCallback(() => { setArt(null); setSel({}); setPhase(0) }, [])
 
   const confirm = useCallback(() => {
     const n = FLOW[phaseRef.current]
@@ -444,6 +557,8 @@ export default function App() {
     mascotSrc = getMascotSrc(sel.audience, node.options![selIndex])
   } else if (node.type === 'loader' && node.think) {
     mascotSrc = MASCOTS['OILY-ARTIST'] ?? MASCOTS['OILY'] ?? ''
+  } else if (node.type === 'loader' && node.sound === 'cheer') {
+    mascotSrc = MASCOTS['OILY-THUMBS-UP'] ?? MASCOTS['OILY'] ?? ''
   } else if (sel.audience && sel.emotion) {
     mascotSrc = getMascotSrc(sel.audience, sel.emotion)
   } else if (sel.audience) {

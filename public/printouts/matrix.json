@@ -1,6 +1,24 @@
 {
   "_comment": "Maps '<audienceId>.<emotionId>' to a printout file in this folder. Read by the frontend (demo mode display) and by the Flask server (printing). 'default' is the fallback for any unmapped combination.",
-  "default": "fear-divorcedmen.png",
-  "divorced-men.fear": "fear-divorcedmen.png",
-  "concerned-mothers.gratitude": "aspiration-mums.png"
+  "default": "WIFE.png",
+  "divorced-men.fear": "WIFE.png",
+  "divorced-men.nostalgia": "NEW-PETROL-SMELL.png",
+  "divorced-men.anger": "POLYESTER-TROUSERS.png",
+  "divorced-men.pride": "MOILBORO-MAN.png",
+  "divorced-men.hope": "GRETA-SUSTAINABLE-FUEL.png",
+  "concerned-mothers.fear": "TURBINE-CANCER.png",
+  "concerned-mothers.nostalgia": "CUP-OF-OIL.png",
+  "concerned-mothers.anger": "EVIL.png",
+  "concerned-mothers.pride": "NATURAL-GAS.png",
+  "concerned-mothers.hope": "DOLPHIN-PLASTIC.png",
+  "disenfranchised-youth.fear": "VIRAL-TREND.png",
+  "disenfranchised-youth.nostalgia": "STORIES.png",
+  "disenfranchised-youth.anger": "POTATO-CLOCK.png",
+  "disenfranchised-youth.pride": "AMERICAN-GIRLS.png",
+  "disenfranchised-youth.hope": "CLIMATE-APP.png",
+  "hard-working-citizens.fear": "SUN-COUCH.png",
+  "hard-working-citizens.nostalgia": "SOLAR-FARM.png",
+  "hard-working-citizens.anger": "GOLF.png",
+  "hard-working-citizens.pride": "NET-ZERO.png",
+  "hard-working-citizens.hope": "YORKSHIRE-PUDDING.png"
 }
