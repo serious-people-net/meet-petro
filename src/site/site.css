@@ -21,6 +21,9 @@ body {
   line-height: 1.45;
 }
 
+a {
+text-decoration: none; color: var(--accent); transition: color .15s; }
+
 .site { max-width: 1020px; margin: 0 auto; padding: 0 28px 90px; }
 
 .site .eyebrow {
@@ -40,16 +43,43 @@ body {
   font-family: var(--display); font-weight: 800;
   font-size: 22px; letter-spacing: -.4px;
 }
+.nav-right { display: flex; align-items: center; gap: 12px; }
 .nav-cta {
   font-family: var(--mono); font-size: 12px; letter-spacing: 1.4px;
   text-transform: uppercase; color: var(--ink-70); text-decoration: none;
   border: 1.5px solid var(--ink-40); border-radius: 3px; padding: 8px 14px;
   transition: color .15s, border-color .15s;
+  background: none; cursor: pointer;
 }
 .nav-cta:hover { color: var(--accent); border-color: var(--accent); }
 
+/* demo layer: fixed below the nav, full viewport */
+.demo-layer {
+  position: fixed; left: 0; right: 0; bottom: 0;
+}
+
+/* btn as a button element (no link) */
+.btn { border: none; cursor: pointer; }
+
+/* ---- load animation ---- */
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes petro-bob {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-7px); }
+}
+
 /* ---- hero ---- */
 .hero { padding: 84px 0 0; text-align: center; }
+.hero .eyebrow  { animation: fade-slide-in .5s ease both; animation-delay: 0ms; }
+.hero h1        { animation: fade-slide-in .5s ease both; animation-delay: 80ms; }
+.hero .hero-sub { animation: fade-slide-in .5s ease both; animation-delay: 160ms; }
+.hero-petro     { animation: fade-slide-in .5s ease both, petro-bob 2.5s ease-in-out infinite;
+                  animation-delay: 240ms, 800ms; }
+.hero-actions   { animation: fade-slide-in .5s ease both; animation-delay: 320ms; }
+
 .hero h1 {
   font-family: var(--display); font-weight: 800;
   font-size: clamp(38px, 6.4vw, 66px); line-height: 1.0; letter-spacing: -1.6px;
@@ -59,7 +89,7 @@ body {
   font-size: clamp(19px, 2.4vw, 23px); color: var(--ink-70);
   max-width: 520px; margin: 28px auto 0; text-wrap: balance;
 }
-.hero-actions { margin-top: 34px; }
+.hero-actions { margin-top: 28px; }
 
 .btn {
   display: inline-flex; align-items: center; gap: 10px;
@@ -73,13 +103,11 @@ body {
 .btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,.18); }
 .btn svg    { width: 18px; height: 18px; }
 
-/* the actual machine, scaled down, clickable into the demo */
-.hero-device {
-  display: block; margin: 64px auto 0; text-decoration: none;
-  width: 476px; height: 574px; overflow: visible;
+.hero-petro {
+  display: block; margin: 12px auto 0;
+  width: 220px; height: auto;
+  clip-path: inset(8% 0 0 0);
 }
-.hero-device .petro-device { transform: scale(.85); transform-origin: top center; }
-.hero-device:hover .pcue.glow { color: var(--accent); }
 
 /* ---- Mac window chrome ---- */
 .mac-window {
@@ -156,8 +184,7 @@ body {
 @media (max-width: 760px) {
   .features { grid-template-columns: 1fr; }
   .hero { padding-top: 56px; }
-  .hero-device { width: 336px; height: 406px; }
-  .hero-device .petro-device { transform: scale(.6); }
+  .hero-petro { width: 180px; }
   .statement { margin-top: 80px; }
   .statement .mac-body { padding: 40px 26px 44px; }
 }

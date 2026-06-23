@@ -1,8 +1,9 @@
 import { ArrowRight, Megaphone, SlidersHorizontal, Printer } from 'lucide-react'
-import { PetroDevice } from '../PetroDevice'
-import oilcanUrl from '../assets/petro-oilcan-cut.png'
+import { useState, useRef, useEffect } from 'react'
+import App from '../App'
+import oilcanUrl from '../assets/mascots/OILY.png'
 
-const DEMO_URL = 'app/'
+const AFTER_EVENT = new Date() > new Date('2026-07-09T23:59:59')
 
 /* ---- Mac-II-flavoured window chrome --------------------------------- */
 function MacWindow({ title, children, className = '' }: {
@@ -18,28 +19,6 @@ function MacWindow({ title, children, className = '' }: {
       </div>
       <div className="mac-body">{children}</div>
     </div>
-  )
-}
-
-/* ---- static device, links into the demo ----------------------------- */
-function HeroDevice() {
-  return (
-    <a className="hero-device" href={DEMO_URL} aria-label="Try the Petro demo">
-      <PetroDevice>
-        <div className="scr">
-          <div className="zone-top">
-            <div className="headline">Hi, I&rsquo;m Petro.</div>
-            <div className="subline">Your automated oil &amp; gas marketer</div>
-          </div>
-          <div className="zone-mid">
-            <div className="petro-art"><img src={oilcanUrl} alt="" /></div>
-          </div>
-          <div className="zone-bot">
-            <div className="pcue glow">[ Click to try the demo ]</div>
-          </div>
-        </div>
-      </PetroDevice>
-    </a>
   )
 }
 
@@ -65,61 +44,91 @@ const FEATURES = [
 ]
 
 export default function ProductPage() {
+  const [showDemo, setShowDemo] = useState(false)
+  const navRef = useRef<HTMLElement>(null)
+  const [navH, setNavH] = useState(0)
+
+  useEffect(() => {
+    if (navRef.current) setNavH(navRef.current.offsetHeight)
+  }, [])
+
   return (
     <div className="site">
 
-      <nav className="site-nav">
+      <nav className="site-nav" ref={navRef}>
         <span className="brand">
           <img src={oilcanUrl} alt="" className="brand-mark" />
           <span className="brand-name">Petro</span>
         </span>
-        <a className="nav-cta" href={DEMO_URL}>TRY THE DEMO</a>
+        <div className="nav-right">
+          {!AFTER_EVENT && (
+            <a className="nav-cta" href="#invite">RSVP</a>
+          )}
+          {showDemo
+            ? <button className="nav-cta nav-back" onClick={() => setShowDemo(false)}>← BACK</button>
+            : <button className="nav-cta" onClick={() => setShowDemo(true)}>TRY THE DEMO</button>
+          }
+        </div>
       </nav>
 
-      <header className="hero">
-        <p className="eyebrow">[ Meet Petro ]</p>
-        <h1>
-          <span className="accent">Deceipt. Delay Deception.</span> Petro makes it fun and easy
-        </h1>
-        <p className="hero-sub">
-          Petro is an automated oil and gas marketer that helps your clients keep on drilling.
-        </p>
-        <div className="hero-actions">
-          <a className="btn" href={DEMO_URL}>Meet Petro <ArrowRight aria-hidden="true" /></a>
+      {showDemo ? (
+        <div className="demo-layer" style={{ top: navH }}>
+          <App navHeight={navH} />
         </div>
-        <HeroDevice />
-      </header>
+      ) : (
+        <>
+          <header className="hero">
+            <p className="eyebrow">[ Meet Petro ]</p>
+            <h1>
+              <span className="accent">Deceipt. Delay Deception.</span> Petro makes it fun and easy
+            </h1>
+            <p className="hero-sub">
+              Petro is an automated oil and gas marketer that helps your clients keep on drilling.
+            </p>
+            <img src={oilcanUrl} alt="Petro" className="hero-petro" />
+            <div className="hero-actions">
+              <button className="btn" onClick={() => setShowDemo(true)}>
+                Meet Petro <ArrowRight aria-hidden="true" />
+              </button>
+            </div>
+          </header>
 
-      <section className="statement">
-        <MacWindow title="Petro.app">
-          <h2>Take the science out of &quot;conscience&quot;</h2>
-          <p>
-            Tired of staff walkouts and &ldquo;moral objections&rdquo;? Petro never wavers, never doubts,
-            and never asks to see the science.
-          </p>
-        </MacWindow>
-      </section>
+          <section className="statement">
+            <MacWindow title="Petro.app">
+              <h2>Take the science out of &quot;conscience&quot;</h2>
+              <p>
+                Tired of staff walkouts and &ldquo;moral objections&rdquo;? Petro never wavers, never doubts,
+                and never asks to see the science.
+              </p>
+            </MacWindow>
+          </section>
 
-      <section className="features">
-        {FEATURES.map(({ icon: Icon, file, title, body }) => (
-          <MacWindow key={title} title={file} className="feature">
-            <Icon className="feature-icon" aria-hidden="true" />
-            <h3>{title}</h3>
-            <p>{body}</p>
-          </MacWindow>
-        ))}
-      </section>
+          <section className="features">
+            {FEATURES.map(({ icon: Icon, file, title, body }) => (
+              <MacWindow key={title} title={file} className="feature">
+                <Icon className="feature-icon" aria-hidden="true" />
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </MacWindow>
+            ))}
+          </section>
 
-      <section className="invite">
-        <p className="eyebrow">[ Demo day ]</p>
-        <h2>See the future of fossil fuel marketing for yourself.</h2>
-        <p className="invite-sub">Come to our Demo Day on the 9th July at [Location].</p>
-        <a className="btn" href={DEMO_URL}>RSVP <ArrowRight aria-hidden="true" /></a>
-      </section>
+          {!AFTER_EVENT && (
+            <section className="invite" id="invite">
+              <p className="eyebrow">[ Demo day ]</p>
+              <h2>See the future of fossil fuel marketing for yourself.</h2>
+              <p className="invite-sub">Come to our Demo Day on July 9 at Second Home, London.</p>
+              <a className="btn" href="#">RSVP <ArrowRight aria-hidden="true" /></a>
+            </section>
+          )}
 
-      <footer className="site-footer">
-        <span>Made by Serious People</span>
-      </footer>
+          <footer className="site-footer">
+
+            Made by <a href="https://seriouspeople.co" target="_blank" rel="noopener noreferrer">Serious People
+            </a>
+          </footer>
+        </>
+      )}
 
     </div>
   )

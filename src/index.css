@@ -282,10 +282,46 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
    ============================================================ */
 .petro-kiosk {
   margin: 0; min-height: 100vh; overflow: hidden;
-  background: var(--screen);
+  background: var(--screen-edge);
 }
 .kiosk-glass {
   width: 378px; height: 378px;
   position: relative; overflow: hidden;
   background: radial-gradient(circle at 50% 44%, var(--screen) 56%, var(--screen-edge) 100%);
+}
+
+/* ============================================================
+   WEB STAGE — Mac window chrome for browser / mobile view
+   ============================================================ */
+.web-stage {
+  display: flex; align-items: center; justify-content: center;
+  width: 100vw;
+  background: var(--screen-edge);
+}
+.web-mac-window {
+  border: 1.5px solid rgba(44,48,56,.55); border-radius: 8px;
+  box-shadow: 0 4px 0 rgba(44,48,56,.10);
+  overflow: hidden;
+  background: var(--screen-edge);
+}
+.web-mac-titlebar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 14px; border-bottom: 1.5px solid rgba(44,48,56,.55);
+  background: #fbfbfc;
+}
+.web-mac-titlebar .mac-close {
+  width: 11px; height: 11px; border: 1.5px solid rgba(44,48,56,.55);
+  background: #fbfbfc; flex: 0 0 auto;
+}
+.web-mac-titlebar .mac-stripes {
+  flex: 1 1 auto; height: 11px;
+  background: repeating-linear-gradient(180deg,
+    rgba(44,48,56,.3) 0 1.5px, transparent 1.5px 3.5px);
+}
+.web-mac-titlebar .mac-title {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 1.2px;
+  text-transform: uppercase; color: rgba(44,48,56,.6); white-space: nowrap;
+}
+.web-mac-body {
+  padding: 0;
 }

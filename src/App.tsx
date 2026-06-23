@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
-import { PetroDevice } from './PetroDevice'
 
 /* ---- mascot image registry ----------------------------------------- */
 const mascotModules = import.meta.glob<string>('./assets/mascots/*.png', { eager: true, import: 'default' })
@@ -351,6 +350,42 @@ function FitStage({ children, pad = 40 }: { children: React.ReactNode; pad?: num
   )
 }
 
+/* ---- web stage: Mac window chrome + zoom for native-res rendering --- */
+function WebStage({ children, navHeight = 0 }: { children: React.ReactNode; navHeight?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const fit = () => {
+      if (!ref.current) return
+      const totalW = 378 + 3      // content + borders (no inner padding)
+      const totalH = 378 + 3 + 36 // content + borders + titlebar
+      const scale = Math.min(
+        (window.innerWidth  - 48) / totalW,
+        (window.innerHeight - navHeight - 48) / totalH,
+        1.5
+      )
+      ref.current.style.zoom = String(scale)
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [navHeight])
+  return (
+    <div className="web-stage" style={{ height: `calc(100vh - ${navHeight}px)` }}>
+      <div className="web-mac-window" ref={ref}>
+        <div className="web-mac-titlebar">
+          <span className="mac-close" aria-hidden="true" />
+          <span className="mac-stripes" aria-hidden="true" />
+          <span className="mac-title">PETRO.APP</span>
+          <span className="mac-stripes" aria-hidden="true" />
+        </div>
+        <div className="web-mac-body">
+          <div className="kiosk-glass">{children}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---- print / decept ------------------------------------------------ */
 function comboIds(audienceLabel: string, emotionLabel: string) {
   return {
@@ -428,7 +463,7 @@ function DebugPage() {
           {audiences.map((aud, ai) => (
             <tr key={aud}>
               <td style={{ ...th, textAlign: 'left' }}>{aud}</td>
-              {emotionKeys.map((emo, ei) => {
+              {emotionKeys.map((emo) => {
                 const key = `${audienceKeys[ai]}.${emo}`
                 const posterName = matrix[key]
                 const src = posterName ? POSTERS[posterName] : undefined
@@ -491,7 +526,7 @@ function DebugPage() {
 const th: React.CSSProperties = { border: '1px solid #333', padding: '8px 12px', whiteSpace: 'nowrap' }
 
 /* ---- state machine ------------------------------------------------- */
-export default function App() {
+export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
   if (DEBUG) return <DebugPage />
 
   const [phase, setPhase]       = useState(0)
@@ -584,11 +619,5 @@ export default function App() {
     )
   }
 
-  return (
-    <div className="petro-page">
-      <FitStage>
-        <PetroDevice>{inner}</PetroDevice>
-      </FitStage>
-    </div>
-  )
+  return <WebStage navHeight={navHeight}>{inner}</WebStage>
 }
