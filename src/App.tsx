@@ -157,7 +157,7 @@ const Sound = (() => {
 /* ---- shared bits --------------------------------------------------- */
 function PetroArt({ onClick, src }: { onClick?: () => void; src?: string }) {
   return (
-    <div className="petro-art" onClick={onClick} style={onClick ? { cursor: 'pointer' } : undefined}>
+    <div className="petro-art" onClick={onClick}>
       <img src={src ?? MASCOTS['OILY']} alt="Petro" />
     </div>
   )

@@ -53,6 +53,7 @@ exec cage -- chromium \
   --kiosk \
   --enable-features=UseOzonePlatform \
   --ozone-platform=wayland \
+  --touch-events=enabled \
   --no-first-run \
   --noerrdialogs \
   --disable-infobars \
