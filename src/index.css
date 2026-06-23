@@ -270,12 +270,18 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
   to   { transform: none; opacity: 1; }
 }
 .decept img {
-  display: block; max-height: 174px; width: auto;
+  display: block; max-height: 240px; width: auto;
   background: #fff; border: 1px solid var(--ink-15);
   box-shadow: 0 6px 18px rgba(44,48,56,.18);
   animation: decept-print .7s ease both;
 }
 @media (prefers-reduced-motion: reduce) { .decept img { animation: none; } }
+.decept-dl {
+  display: block; margin-top: 10px; text-align: center;
+  font-family: var(--mono); font-size: 12px; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--ink-55); text-decoration: none; transition: color .15s;
+}
+.decept-dl:hover { color: var(--ink); }
 
 /* ============================================================
    KIOSK MODE — full-viewport screen for the Pi (1080×1080)

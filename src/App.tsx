@@ -9,17 +9,17 @@ for (const [path, url] of Object.entries(mascotModules)) {
 }
 
 const AUDIENCE_MASCOT: Record<string, string> = {
-  'Concerned Moms':        'MUM',
+  'Concerned Moms': 'MUM',
   'Disenfranchised Youth': 'GOTH',
-  'Divorced Men':          'DIVORCE',
+  'Divorced Men': 'DIVORCE',
   'Hard-Working Citizens': 'WORKER',
 }
 const EMOTION_MASCOT: Record<string, string> = {
-  'Anger':     'ANGER',
+  'Anger': 'ANGER',
   'Nostalgia': 'NOSTALGIC',
-  'Fear':      'FEAR',
-  'Hope':      'HOPEFUL',
-  'Pride':     'DEFAULT',
+  'Fear': 'FEAR',
+  'Hope': 'HOPEFUL',
+  'Pride': 'DEFAULT',
 }
 
 function getMascotSrc(audience?: string, emotion?: string): string {
@@ -35,20 +35,20 @@ function getMascotSrc(audience?: string, emotion?: string): string {
 
 /* ---- content ------------------------------------------------------- */
 const AUDIENCES = ['Concerned Moms', 'Disenfranchised Youth', 'Divorced Men', 'Hard-Working Citizens']
-const EMOTIONS  = ['Anger', 'Nostalgia', 'Fear', 'Pride', 'Hope']
+const EMOTIONS = ['Anger', 'Nostalgia', 'Fear', 'Pride', 'Hope']
 
 const AUDIENCE_IDS: Record<string, string> = {
-  'Concerned Moms':        'concerned-mothers',
+  'Concerned Moms': 'concerned-mothers',
   'Disenfranchised Youth': 'disenfranchised-youth',
-  'Divorced Men':          'divorced-men',
+  'Divorced Men': 'divorced-men',
   'Hard-Working Citizens': 'hard-working-citizens',
 }
 const EMOTION_IDS: Record<string, string> = {
-  'Anger':     'anger',
+  'Anger': 'anger',
   'Nostalgia': 'nostalgia',
-  'Fear':      'fear',
-  'Pride':     'pride',
-  'Hope':      'hope',
+  'Fear': 'fear',
+  'Pride': 'pride',
+  'Hope': 'hope',
 }
 
 type NodeType = 'welcome' | 'loader' | 'select' | 'success' | 'blob'
@@ -73,8 +73,10 @@ const FLOW: FlowNode[] = [
   { type: 'loader', headlines: ['Great choice.'], dur: 2200, sound: 'cheer' },
   { type: 'select', store: 'emotion', title: 'What emotion\nshould we\nmanipulate?', options: EMOTIONS, titleXs: true },
   { type: 'loader', headlines: ["Now we're\ncooking!"], dur: 2200, sound: 'cheer' },
-  { type: 'loader', think: true, dur: 5000,
-    headlines: ['Having deep\nstrategic thoughts…', 'Thinking of\nworld-first ideas', 'Cutting down\nsome trees…'] },
+  {
+    type: 'loader', think: true, dur: 5000,
+    headlines: ['Having deep\nstrategic thoughts…', 'Thinking of\nworld-first ideas', 'Cutting down\nsome trees…']
+  },
   { type: 'success' },
   { type: 'blob', dur: 3200, sound: 'none' },
 ]
@@ -131,11 +133,11 @@ const Sound = (() => {
     src.start(t); src.stop(t + dur)
   }
   return {
-    nav()    { noise(0.022, 0.04, 3400); tone(86, 0, 0.05, 0.04, 'sine') },
+    nav() { noise(0.022, 0.04, 3400); tone(86, 0, 0.05, 0.04, 'sine') },
     select() { noise(0.04, 0.05, 1800); tone(67, 0, 0.08, 0.06); tone(71, 0.055, 0.1, 0.05) },
-    power()  { [60, 64, 67, 72].forEach((n, i) => tone(n, i * 0.075, 0.55, 0.055)) },
-    land()   { tone(60, 0, 0.5, 0.06, 'sine') },
-    cheer()  { tone(72, 0, 0.12, 0.05, 'triangle'); tone(76, 0.1, 0.2, 0.04, 'triangle') },
+    power() { [60, 64, 67, 72].forEach((n, i) => tone(n, i * 0.075, 0.55, 0.055)) },
+    land() { tone(60, 0, 0.5, 0.06, 'sine') },
+    cheer() { tone(72, 0, 0.12, 0.05, 'triangle'); tone(76, 0.1, 0.2, 0.04, 'triangle') },
     loading(dur: number) {
       const scale = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]
       const step = 0.42
@@ -295,13 +297,20 @@ function SuccessScreen({ onReset, art, mascotSrc }: { onReset: () => void; art?:
   return (
     <div className="scr scr-fade" onClick={reset}>
       <div className="zone-top">
-        <div className={`headline${resetting ? ' sm' : ''}`} key={resetting ? 'r' : 'i'} style={{ animation: 'petro-fadein .3s ease both' }}>
-          <Lines text={resetting ? "Let's make some\nmore ideas…" : "Your idea\nis ready"} />
-        </div>
+        {(!art || resetting) && (
+          <div className={`headline${resetting ? ' sm' : ''}`} key={resetting ? 'r' : 'i'} style={{ animation: 'petro-fadein .3s ease both' }}>
+            <Lines text={resetting ? "Let's make some\nmore ideas…" : "Your idea\nis ready"} />
+          </div>
+        )}
       </div>
       <div className="zone-mid">
         {art
-          ? <div className="decept"><img src={art} alt="Your generated Decept" /></div>
+          ? <div className="decept">
+            <img src={art} alt="Your generated Decept" />
+            {!resetting && (
+              <a href={art} download="petro-idea.png" className="decept-dl">↓ Save image</a>
+            )}
+          </div>
           : <PetroArt src={mascotSrc} />}
       </div>
       <div className="zone-bot">
@@ -334,7 +343,7 @@ function FitStage({ children, pad = 40 }: { children: React.ReactNode; pad?: num
       el.style.transform = 'none'
       const w = el.offsetWidth, h = el.offsetHeight
       const scale = Math.min((window.innerWidth - pad) / w, (window.innerHeight - pad) / h)
-      const dx = (window.innerWidth  - w * scale) / 2
+      const dx = (window.innerWidth - w * scale) / 2
       const dy = (window.innerHeight - h * scale) / 2
       el.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`
     }
@@ -359,7 +368,7 @@ function WebStage({ children, navHeight = 0 }: { children: React.ReactNode; navH
       const totalW = 378 + 3      // content + borders (no inner padding)
       const totalH = 378 + 3 + 36 // content + borders + titlebar
       const scale = Math.min(
-        (window.innerWidth  - 48) / totalW,
+        (window.innerWidth - 48) / totalW,
         (window.innerHeight - navHeight - 48) / totalH,
         1.5
       )
@@ -390,7 +399,7 @@ function WebStage({ children, navHeight = 0 }: { children: React.ReactNode; navH
 function comboIds(audienceLabel: string, emotionLabel: string) {
   return {
     audience: AUDIENCE_IDS[audienceLabel] ?? audienceLabel.toLowerCase().replace(/\s+/g, '-'),
-    emotion:  EMOTION_IDS[emotionLabel]   ?? emotionLabel.toLowerCase(),
+    emotion: EMOTION_IDS[emotionLabel] ?? emotionLabel.toLowerCase(),
   }
 }
 
@@ -400,7 +409,7 @@ function firePrint(audienceLabel: string, emotionLabel: string) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ audience, emotion }),
-  }).catch(() => {})
+  }).catch(() => { })
 }
 
 // Web demo only: resolve the pre-generated Decept artwork for this combo.
@@ -529,13 +538,13 @@ const th: React.CSSProperties = { border: '1px solid #333', padding: '8px 12px',
 export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
   if (DEBUG) return <DebugPage />
 
-  const [phase, setPhase]       = useState(0)
+  const [phase, setPhase] = useState(0)
   const [selIndex, setSelIndex] = useState(0)
-  const [sel, setSel]           = useState<Record<string, string>>({})
-  const [art, setArt]           = useState<string | null>(null)
-  const phaseRef    = useRef(phase);    phaseRef.current    = phase
+  const [sel, setSel] = useState<Record<string, string>>({})
+  const [art, setArt] = useState<string | null>(null)
+  const phaseRef = useRef(phase); phaseRef.current = phase
   const selIndexRef = useRef(selIndex); selIndexRef.current = selIndex
-  const selRef      = useRef(sel);      selRef.current      = sel
+  const selRef = useRef(sel); selRef.current = sel
   const node = FLOW[phase]
 
   const advance = useCallback(() => setPhase((p) => (p + 1) % FLOW.length), [])
@@ -555,7 +564,12 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
     advance()
   }, [advance])
 
-  useEffect(() => { if (FLOW[phase].type === 'select') setSelIndex(0) }, [phase])
+  useEffect(() => {
+    if (FLOW[phase].type === 'select') {
+      const opts = FLOW[phase].options!
+      setSelIndex(Math.floor(Math.random() * opts.length))
+    }
+  }, [phase])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -564,9 +578,9 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
       if (n.type === 'welcome') {
         if (enter) { e.preventDefault(); Sound.select(); advance() }
       } else if (n.type === 'select') {
-        if (e.key === 'ArrowLeft')       { e.preventDefault(); Sound.nav(); setSelIndex((x) => (x - 1 + n.options!.length) % n.options!.length) }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); Sound.nav(); setSelIndex((x) => (x - 1 + n.options!.length) % n.options!.length) }
         else if (e.key === 'ArrowRight') { e.preventDefault(); Sound.nav(); setSelIndex((x) => (x + 1) % n.options!.length) }
-        else if (enter)                  { e.preventDefault(); Sound.select(); confirm() }
+        else if (enter) { e.preventDefault(); Sound.select(); confirm() }
       } else if (n.type === 'success') {
         if (enter) { e.preventDefault(); Sound.select(); goReset() }
       }
@@ -575,18 +589,27 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
     return () => window.removeEventListener('keydown', onKey)
   }, [advance, confirm, goReset])
 
-  // kiosk: reset after 30s of inactivity on a selector
+  // kiosk: reset after 2 minutes of inactivity on a selector
   useEffect(() => {
     if (FLOW[phase].type !== 'select') return
-    let t = setTimeout(goReset, 30000)
-    const bump = () => { clearTimeout(t); t = setTimeout(goReset, 30000) }
+    let t = setTimeout(goReset, 240000)
+    const bump = () => { clearTimeout(t); t = setTimeout(goReset, 240000) }
     window.addEventListener('keydown', bump)
-    return () => { clearTimeout(t); window.removeEventListener('keydown', bump) }
+    window.addEventListener('pointerdown', bump)
+    window.addEventListener('touchstart', bump)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('keydown', bump)
+      window.removeEventListener('pointerdown', bump)
+      window.removeEventListener('touchstart', bump)
+    }
   }, [phase, goReset])
 
   // Resolve which mascot image to show at the current phase
   let mascotSrc = MASCOTS['OILY'] ?? ''
-  if (node.type === 'select' && node.store === 'audience') {
+  if (node.type === 'success' && KIOSK) {
+    mascotSrc = MASCOTS['OILY-PRINTING'] ?? MASCOTS['OILY'] ?? ''
+  } else if (node.type === 'select' && node.store === 'audience') {
     mascotSrc = getMascotSrc(node.options![selIndex])
   } else if (node.type === 'select' && node.store === 'emotion') {
     mascotSrc = getMascotSrc(sel.audience, node.options![selIndex])
@@ -601,11 +624,11 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
   }
 
   let screen: React.ReactNode
-  if      (node.type === 'welcome') screen = <WelcomeScreen onBegin={advance} mascotSrc={mascotSrc} />
-  else if (node.type === 'loader')  screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} mascotSrc={mascotSrc} />
-  else if (node.type === 'select')  screen = <SelectScreen node={node} index={selIndex} onChange={setSelIndex} onConfirm={confirm} mascotSrc={mascotSrc} />
+  if (node.type === 'welcome') screen = <WelcomeScreen onBegin={advance} mascotSrc={mascotSrc} />
+  else if (node.type === 'loader') screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} mascotSrc={mascotSrc} />
+  else if (node.type === 'select') screen = <SelectScreen node={node} index={selIndex} onChange={setSelIndex} onConfirm={confirm} mascotSrc={mascotSrc} />
   else if (node.type === 'success') screen = <SuccessScreen onReset={goReset} art={KIOSK ? null : art} mascotSrc={mascotSrc} />
-  else                              screen = <BlobScreen key={'s' + phase} dur={node.dur!} onDone={toStart} />
+  else screen = <BlobScreen key={'s' + phase} dur={node.dur!} onDone={toStart} />
 
   const inner = <><div className="crt-flash" key={'f' + phase} />{screen}</>
 
