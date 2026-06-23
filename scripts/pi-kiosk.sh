@@ -48,6 +48,10 @@ for _ in $(seq 1 30); do
   sleep 0.5
 done
 
+# Hide the hardware cursor: cage uses this theme, finds no cursor files, draws nothing.
+export XCURSOR_THEME=Hidden
+export XCURSOR_SIZE=1
+
 # --- Kiosk: cage runs Chromium fullscreen and exits when it does ---
 exec cage -- chromium \
   --kiosk \
