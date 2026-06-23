@@ -19,7 +19,7 @@ const EMOTION_MASCOT: Record<string, string> = {
   'Nostalgia': 'NOSTALGIC',
   'Fear': 'FEAR',
   'Hope': 'HOPEFUL',
-  'Pride': 'DEFAULT',
+  'Pride': 'PRIDE',
 }
 
 function getMascotSrc(audience?: string, emotion?: string): string {
@@ -456,7 +456,7 @@ function DebugPage() {
     'hard-working-citizens.hope': 'YORKSHIRE-PUDDING',
   }
 
-  const mascotVariants = ['DEFAULT', 'FEAR', 'ANGER', 'NOSTALGIC', 'HOPEFUL']
+  const mascotVariants = ['DEFAULT', 'FEAR', 'ANGER', 'NOSTALGIC', 'HOPEFUL', 'PRIDE']
 
   return (
     <div style={{ fontFamily: 'monospace', padding: 24, background: '#111', color: '#eee', minHeight: '100vh' }}>
