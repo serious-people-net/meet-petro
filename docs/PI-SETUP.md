@@ -127,13 +127,13 @@ sudo reboot                            # confirm it comes up into the app
 - [x] `systemctl start` builds the frontend, starts Flask, launches chromium
 - [x] cage acquires the GPU via seatd; chromium loads `/app/?app` (HTTP 200)
 - [x] `systemctl stop` cleanly tears everything down (escape hatch)
+- [x] App renders fullscreen, correctly sized; nothing important clipped by the
+      circular panel under `?app`
+- [x] Panel comes up at 1080×1080 (else apply the KMS modeline above)
+- [x] Keyboard arrows + Enter drive the flow; touch works (chevrons/taps/swipes)
 
 **Still to test once the round panel is connected ("screen day"):**
 
-- [ ] App renders fullscreen, correctly sized; nothing important clipped by the
-      circular panel under `?app`
-- [ ] Panel comes up at 1080×1080 (else apply the KMS modeline above)
-- [ ] Keyboard arrows + Enter drive the flow; touch works (chevrons/taps/swipes)
 - [ ] Screen blanking off (`sudo raspi-config` → Display → Screen Blanking),
       sound output works
 - [ ] Test print from each audience×emotion combination (needs printer)
