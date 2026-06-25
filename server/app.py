@@ -28,13 +28,15 @@ PRINTER_NAME = "petroprinter"
 BACK_COVER = "BACK-COVER.png"
 
 # lp options: A5, rear tray, greyscale, highest quality, fill page, duplex
+# Duplex=DuplexNoTumble = long-edge flip (portrait). This is the PPD-style option;
+# the IPP-style `sides=two-sided-long-edge` is ignored by this printer.
 PRINT_OPTIONS = [
     "-o", "media=A5",
     "-o", "media-source=rear",
     "-o", "print-color-mode=monochrome",
     "-o", "print-quality=5",
     "-o", "print-scaling=fill",
-    "-o", "sides=two-sided-long-edge",
+    "-o", "Duplex=DuplexNoTumble",
 ]
 
 app = Flask(__name__)
@@ -71,7 +73,8 @@ def print_idea():
     tmp.close()
     try:
         subprocess.run(
-            ["convert", str(front_path), str(back_path), tmp_path],
+            ["convert", "-density", "300", "-compress", "lossless",
+             str(front_path), str(back_path), tmp_path],
             check=True, capture_output=True, text=True, timeout=30,
         )
         cmd = ["lp"]
