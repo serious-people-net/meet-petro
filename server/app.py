@@ -24,8 +24,9 @@ PRINTOUTS = DIST / "printouts"
 # Update this once the exhibit printer model is known.
 PRINTER_NAME = "petroprinter"
 
-# Back cover printed on the reverse of every idea sheet.
-BACK_COVER = "BACK-COVER.png"
+# Back cover printed on the reverse of every idea sheet (PDF preferred over PNG).
+BACK_COVER_PDF = "Back-Cover.pdf"
+BACK_COVER_PNG = "BACK-COVER.png"
 
 # lp options: A5, rear tray, greyscale, highest quality, fill page, duplex
 PRINT_OPTIONS = [
@@ -63,15 +64,23 @@ def print_idea():
     except (KeyError, FileNotFoundError) as exc:
         return jsonify({"ok": False, "error": str(exc)}), 404
 
-    back_path = PRINTOUTS / BACK_COVER
+    # Prefer the PDF back cover; fall back to PNG if missing.
+    back_path = PRINTOUTS / BACK_COVER_PDF
+    if not back_path.exists():
+        back_path = PRINTOUTS / BACK_COVER_PNG
 
     # Combine front poster + back cover into a 2-page PDF for duplex printing.
+    # ghostscript handles PNG + PDF input reliably (no ImageMagick PDF policy issues).
     tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
     tmp_path = tmp.name
     tmp.close()
     try:
         subprocess.run(
-            ["convert", str(front_path), str(back_path), tmp_path],
+            [
+                "gs", "-dBATCH", "-dNOPAUSE", "-q", "-sDEVICE=pdfwrite",
+                f"-sOutputFile={tmp_path}",
+                str(front_path), str(back_path),
+            ],
             check=True, capture_output=True, text=True, timeout=30,
         )
         cmd = ["lp"]
@@ -81,7 +90,8 @@ def print_idea():
         cmd.append(tmp_path)
         subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=10)
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        app.logger.error("print failed: %s", exc)
+        app.logger.error("print failed: %s\nstdout: %s\nstderr: %s",
+                         exc, getattr(exc, "stdout", ""), getattr(exc, "stderr", ""))
         return jsonify({"ok": False, "error": "print command failed"}), 500
     finally:
         os.unlink(tmp_path)

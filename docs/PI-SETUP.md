@@ -114,13 +114,16 @@ lp -d petroprinter \
 ```
 
 `PRINTER_NAME = "petroprinter"` is already set in `server/app.py`. The server
-uses ImageMagick (`convert`) to combine the idea sheet and `BACK-COVER.png` into
-a two-page PDF, then prints it duplex (long-edge, rear tray). ImageMagick must
-be installed on the Pi:
+uses **ghostscript** (`gs`) to combine the idea sheet (PNG) and `Back-Cover.pdf`
+into a two-page PDF, then prints it duplex (long-edge, rear tray). ghostscript is
+usually already installed as a cups-filters dependency; if not:
 
 ```bash
-sudo apt-get install -y imagemagick
+sudo apt-get install -y ghostscript
 ```
+
+(ImageMagick was tried first but Debian's default policy.xml blocks PDF writes,
+causing only the back cover to appear. ghostscript has no such restriction.)
 
 **Tray options:** `media-source=auto` (printer chooses), `main` (front cassette),
 `rear` (rear tray). Exhibit setup uses `rear`.
