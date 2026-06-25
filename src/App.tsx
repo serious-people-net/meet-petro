@@ -66,6 +66,13 @@ interface FlowNode {
   titleXs?: boolean
 }
 
+// ?app strips the device chrome for the Pi's 1080×1080 panel (?kiosk kept as alias).
+// The exhibit build prints; the web demo shows the Decept on screen instead.
+const KIOSK = (() => {
+  const q = new URLSearchParams(window.location.search)
+  return q.has('app') || q.has('kiosk')
+})()
+
 const FLOW: FlowNode[] = [
   { type: 'welcome' },
   { type: 'loader', headlines: ["Great,\nlet's get started!"], dur: 2800 },
@@ -74,7 +81,7 @@ const FLOW: FlowNode[] = [
   { type: 'select', store: 'emotion', title: 'What emotion\nshould we\nmanipulate?', options: EMOTIONS, titleXs: true },
   { type: 'loader', headlines: ["Now we're\ncooking!"], dur: 2200, sound: 'cheer' },
   {
-    type: 'loader', think: true, dur: 22000,
+    type: 'loader', think: true, dur: KIOSK ? 22000 : 8000,
     headlines: [
       'Having deep\nstrategic thoughts…',
       'Greenwashing\nthe greenwash…',
@@ -85,16 +92,9 @@ const FLOW: FlowNode[] = [
     ]
   },
   { type: 'success' },
-  { type: 'blob', dur: 3200, sound: 'none' },
+  { type: 'blob', dur: 5200, sound: 'none' },
 ]
 const RESET_INDEX = FLOW.findIndex((n) => n.type === 'blob')
-
-// ?app strips the device chrome for the Pi's 1080×1080 panel (?kiosk kept as alias).
-// The exhibit build prints; the web demo shows the Decept on screen instead.
-const KIOSK = (() => {
-  const q = new URLSearchParams(window.location.search)
-  return q.has('app') || q.has('kiosk')
-})()
 
 const DEBUG = new URLSearchParams(window.location.search).has('debug')
 
@@ -162,9 +162,9 @@ const Sound = (() => {
 })()
 
 /* ---- shared bits --------------------------------------------------- */
-function PetroArt({ onClick, src }: { onClick?: () => void; src?: string }) {
+function PetroArt({ onClick, src, large }: { onClick?: () => void; src?: string; large?: boolean }) {
   return (
-    <div className="petro-art" onClick={onClick}>
+    <div className={'petro-art' + (large ? ' large' : '')} onClick={onClick}>
       <img src={src ?? MASCOTS['OILY']} alt="Petro" />
     </div>
   )
@@ -208,7 +208,7 @@ function WelcomeScreen({ onBegin, mascotSrc }: { onBegin: () => void; mascotSrc?
   )
 }
 
-function LoaderScreen({ node, onDone, mascotSrc, waitFor }: { node: FlowNode; onDone: () => void; mascotSrc?: string; waitFor?: Promise<void> | null }) {
+function LoaderScreen({ node, onDone, mascotSrc, waitFor, largeMascot }: { node: FlowNode; onDone: () => void; mascotSrc?: string; waitFor?: Promise<void> | null; largeMascot?: boolean }) {
   const [p, setP] = useState(0)
   const fillRef = useRef<HTMLDivElement>(null)
   const done = useRef(false)
@@ -246,7 +246,7 @@ function LoaderScreen({ node, onDone, mascotSrc, waitFor }: { node: FlowNode; on
           <Lines text={headlines[hi]} />
         </div>
       </div>
-      <div className="zone-mid"><PetroArt src={mascotSrc} /></div>
+      <div className="zone-mid"><PetroArt src={mascotSrc} large={largeMascot} /></div>
       <div className="zone-bot">
         <div className="loadbar"><div className="fill" ref={fillRef} /></div>
       </div>
@@ -278,7 +278,7 @@ function SelectScreen({ node, index, onChange, onConfirm, mascotSrc }: {
   )
 }
 
-function SuccessScreen({ onReset, art, mascotSrc }: { onReset: () => void; art?: string | null; mascotSrc?: string }) {
+function SuccessScreen({ onReset, art, mascotSrc, largeMascot }: { onReset: () => void; art?: string | null; mascotSrc?: string; largeMascot?: boolean }) {
   const cb = useRef(onReset); cb.current = onReset
   const [showBar, setShowBar] = useState(false)
   const [resetting, setResetting] = useState(false)
@@ -322,7 +322,7 @@ function SuccessScreen({ onReset, art, mascotSrc }: { onReset: () => void; art?:
               <a href={art} download="petro-idea.png" className="decept-dl">↓ Save image</a>
             )}
           </div>
-          : <PetroArt src={mascotSrc} />}
+          : <PetroArt src={mascotSrc} large={largeMascot} />}
       </div>
       <div className="zone-bot">
         {showBar && <div className="loadbar appear"><div className="fill" ref={fillRef} /></div>}
@@ -642,9 +642,9 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
 
   let screen: React.ReactNode
   if (node.type === 'welcome') screen = <WelcomeScreen onBegin={advance} mascotSrc={mascotSrc} />
-  else if (node.type === 'loader') screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} mascotSrc={mascotSrc} waitFor={node.think ? printPromise.current : null} />
+  else if (node.type === 'loader') screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} mascotSrc={mascotSrc} waitFor={node.think ? printPromise.current : null} largeMascot={node.think} />
   else if (node.type === 'select') screen = <SelectScreen node={node} index={selIndex} onChange={setSelIndex} onConfirm={confirm} mascotSrc={mascotSrc} />
-  else if (node.type === 'success') screen = <SuccessScreen onReset={goReset} art={KIOSK ? null : art} mascotSrc={mascotSrc} />
+  else if (node.type === 'success') screen = <SuccessScreen onReset={goReset} art={KIOSK ? null : art} mascotSrc={mascotSrc} largeMascot={KIOSK} />
   else screen = <BlobScreen key={'s' + phase} dur={node.dur!} onDone={toStart} />
 
   const inner = <><div className="crt-flash" key={'f' + phase} />{screen}</>

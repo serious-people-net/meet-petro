@@ -150,6 +150,7 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
   object-fit: contain; object-position: center center;
   animation: petro-bob 3.6s ease-in-out infinite;
 }
+.petro-art.large img { width: 200px; height: 220px; }
 
 /* ---- system cue line ---- */
 .pcue {
