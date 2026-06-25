@@ -10,7 +10,9 @@ Print:  POST /api/print  {"audience": "divorced-men", "emotion": "fear"}
 """
 
 import json
+import re
 import subprocess
+import time
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -63,10 +65,20 @@ def print_idea():
     cmd.append(str(path))
 
     try:
-        subprocess.run(cmd, check=True, capture_output=True, timeout=30)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=10)
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         app.logger.error("print failed: %s", exc)
         return jsonify({"ok": False, "error": "print command failed"}), 500
+
+    # Block until CUPS reports the job as complete (disappears from active queue).
+    m = re.search(r'request id is (\S+)', result.stdout)
+    if m:
+        job_id = m.group(1)
+        for _ in range(90):
+            check = subprocess.run(['lpstat', '-o', job_id], capture_output=True, text=True)
+            if job_id not in check.stdout:
+                break
+            time.sleep(1)
 
     return jsonify({"ok": True, "file": path.name})
 

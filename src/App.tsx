@@ -201,7 +201,7 @@ function WelcomeScreen({ onBegin, mascotSrc }: { onBegin: () => void; mascotSrc?
   )
 }
 
-function LoaderScreen({ node, onDone, mascotSrc }: { node: FlowNode; onDone: () => void; mascotSrc?: string }) {
+function LoaderScreen({ node, onDone, mascotSrc, waitFor }: { node: FlowNode; onDone: () => void; mascotSrc?: string; waitFor?: Promise<void> | null }) {
   const [p, setP] = useState(0)
   const fillRef = useRef<HTMLDivElement>(null)
   const done = useRef(false)
@@ -215,6 +215,10 @@ function LoaderScreen({ node, onDone, mascotSrc }: { node: FlowNode; onDone: () 
   useEffect(() => {
     let raf: number, hold: ReturnType<typeof setTimeout>
     let start: number | null = null
+    let animDone = false
+    let printDone = !waitFor
+    const tryAdvance = () => { if (animDone && printDone && !done.current) { done.current = true; hold = setTimeout(() => cb.current(), 360) } }
+    if (waitFor) waitFor.then(() => { printDone = true; tryAdvance() })
     done.current = false
     const tick = (t: number) => {
       if (start == null) start = t
@@ -222,7 +226,7 @@ function LoaderScreen({ node, onDone, mascotSrc }: { node: FlowNode; onDone: () 
       setP(v)
       if (fillRef.current) fillRef.current.style.width = v * 100 + '%'
       if (v < 1) { raf = requestAnimationFrame(tick) }
-      else if (!done.current) { done.current = true; hold = setTimeout(() => cb.current(), 360) }
+      else { animDone = true; tryAdvance() }
     }
     raf = requestAnimationFrame(tick)
     return () => { cancelAnimationFrame(raf); clearTimeout(hold) }
@@ -403,13 +407,13 @@ function comboIds(audienceLabel: string, emotionLabel: string) {
   }
 }
 
-function firePrint(audienceLabel: string, emotionLabel: string) {
+function firePrint(audienceLabel: string, emotionLabel: string): Promise<void> {
   const { audience, emotion } = comboIds(audienceLabel, emotionLabel)
-  fetch('/api/print', {
+  return fetch('/api/print', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ audience, emotion }),
-  }).catch(() => { })
+  }).then(() => { }).catch(() => { })
 }
 
 // Web demo only: resolve the pre-generated Decept artwork for this combo.
@@ -545,6 +549,7 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
   const phaseRef = useRef(phase); phaseRef.current = phase
   const selIndexRef = useRef(selIndex); selIndexRef.current = selIndex
   const selRef = useRef(sel); selRef.current = sel
+  const printPromise = useRef<Promise<void> | null>(null)
   const node = FLOW[phase]
 
   const advance = useCallback(() => setPhase((p) => (p + 1) % FLOW.length), [])
@@ -556,9 +561,8 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
     if (n.type === 'select') {
       const value = n.options![selIndexRef.current]
       setSel((s) => ({ ...s, [n.store!]: value }))
-      if (n.store === 'emotion') {
-        if (KIOSK) firePrint(selRef.current.audience, value)
-        else resolveDecept(selRef.current.audience, value).then(setArt)
+      if (n.store === 'emotion' && !KIOSK) {
+        resolveDecept(selRef.current.audience, value).then(setArt)
       }
     }
     advance()
@@ -569,6 +573,12 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
       const opts = FLOW[phase].options!
       setSelIndex(Math.floor(Math.random() * opts.length))
     }
+    // Fire print when the cooking loader starts (the loader before think),
+    // so the print is in flight throughout the thinking animation.
+    if (KIOSK && FLOW[phase].type === 'loader' && !FLOW[phase].think && FLOW[phase + 1]?.think) {
+      printPromise.current = firePrint(selRef.current.audience, selRef.current.emotion)
+    }
+    if (phase === 0) printPromise.current = null
   }, [phase])
 
   useEffect(() => {
@@ -625,7 +635,7 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
 
   let screen: React.ReactNode
   if (node.type === 'welcome') screen = <WelcomeScreen onBegin={advance} mascotSrc={mascotSrc} />
-  else if (node.type === 'loader') screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} mascotSrc={mascotSrc} />
+  else if (node.type === 'loader') screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} mascotSrc={mascotSrc} waitFor={node.think ? printPromise.current : null} />
   else if (node.type === 'select') screen = <SelectScreen node={node} index={selIndex} onChange={setSelIndex} onConfirm={confirm} mascotSrc={mascotSrc} />
   else if (node.type === 'success') screen = <SuccessScreen onReset={goReset} art={KIOSK ? null : art} mascotSrc={mascotSrc} />
   else screen = <BlobScreen key={'s' + phase} dur={node.dur!} onDone={toStart} />
