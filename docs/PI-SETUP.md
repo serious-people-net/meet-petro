@@ -223,15 +223,28 @@ wlroots/cage itself before Chromium has loaded.
    `~/.local/share/icons/Hidden/cursors/`. The cursor disappears once Chromium
    loads and an input event fires, but the cursor is briefly visible at startup.
 
-**Current status:** cursor vanishes after the first touch/input event but is
-visible for a second or two on cold boot. Root cause: wlroots renders the cursor
-at startup before reading the theme, or the theme lookup is deferred until the
-first pointer event. No fully clean fix found yet without patching cage.
+**Root cause:** the WaveShare round panel enumerates as an *absolute pointer*
+(`mouse0` in `/proc/bus/input/devices`), not a pure touch device. So wlroots/cage
+creates a cursor for it and parks it at screen centre on startup. cage only applies
+the transparent xcursor theme when it next *(re)sets* the cursor image — which is
+deferred until a pointer device is (re)attached. That is exactly why physically
+unplugging/replugging the panel makes the cursor vanish: the re-enumeration is the
+event that finally applies the theme, and it then stays hidden for the session.
 
-**Workaround candidates not yet tried:**
-- Start cage with `WLR_NO_HARDWARE_CURSORS=1` (forces software cursor path —
-  may have side-effects with touch input)
-- Delay the kiosk script so the system is fully idle before cage starts
+Things that do **not** fix it (verified on the exhibit Pi): the transparent
+`XCURSOR_THEME=Hidden` theme alone (works only *after* the first event), and
+`WLR_NO_HARDWARE_CURSORS=1` (the startup cursor isn't a hardware-plane default).
+
+**Fix applied:** automate the re-attach. `scripts/hide-cursor-replug.sh` does a
+*software* USB unplug/replug of the WaveShare panel (toggles its
+`/sys/bus/usb/devices/<dev>/authorized` flag) a few seconds after cage starts. This
+is identical to the manual replug that was already known to hide the cursor — no
+theme timing, no daemon, no internet, no extra packages. It is wired into
+`petro-kiosk.service` as `ExecStartPost=+…` (the `+` runs it as root, needed for
+sysfs, even though the service runs as the kiosk user). The script resolves the
+panel by USB vendor:product (`0712:000a`) so it survives port changes, and is a safe
+no-op if the panel isn't found. **Note:** this only runs under systemd — a manual
+`pi-kiosk.sh` run won't auto-hide the cursor (replug by hand for testing).
 
 ## Verification status
 

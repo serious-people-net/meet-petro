@@ -19,6 +19,10 @@ Environment=LIBSEAT_BACKEND=seatd
 RuntimeDirectory=petro-kiosk
 Environment=XDG_RUNTIME_DIR=/run/petro-kiosk
 ExecStart=__REPO__/scripts/pi-kiosk.sh
+# After cage is up, software-replug the WaveShare panel to hide the startup
+# cursor. `+` runs it as root (needed for sysfs) despite User= above; `-` makes
+# any failure non-fatal so a missing/odd panel can never take down the kiosk.
+ExecStartPost=+-__REPO__/scripts/hide-cursor-replug.sh
 # On exit you land on a TTY to maintain things; don't respawn the browser.
 Restart=no
 

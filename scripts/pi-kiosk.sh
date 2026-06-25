@@ -48,7 +48,15 @@ for _ in $(seq 1 30); do
   sleep 0.5
 done
 
-# Hide the hardware cursor: cage uses this theme, finds no cursor files, draws nothing.
+# Cursor hiding has two parts:
+#   1. This transparent xcursor theme — cage applies it, but only once it (re)sets
+#      a cursor image, which is deferred until a pointer device is (re)attached.
+#   2. The actual trigger — the WaveShare round panel enumerates as an absolute
+#      pointer (mouse0), so cage parks a cursor at screen centre on startup and
+#      nothing applies the theme until that first re-attach event. The systemd
+#      unit's ExecStartPost runs scripts/hide-cursor-replug.sh to force one
+#      (a software USB unplug/replug), which makes the cursor vanish for the
+#      whole session. See docs/PI-SETUP.md.
 export XCURSOR_THEME=Hidden
 export XCURSOR_SIZE=1
 
