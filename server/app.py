@@ -20,7 +20,15 @@ PRINTOUTS = DIST / "printouts"
 
 # Printer name as known to CUPS (`lpstat -p` to list). None = system default.
 # Update this once the exhibit printer model is known.
-PRINTER_NAME = None
+PRINTER_NAME = "petroprinter"
+
+# lp options: A5 paper, greyscale, highest quality, scale image to fill page
+PRINT_OPTIONS = [
+    "-o", "media=A5",
+    "-o", "print-color-mode=monochrome",
+    "-o", "print-quality=5",
+    "-o", "print-scaling=fill",
+]
 
 app = Flask(__name__)
 
@@ -51,6 +59,7 @@ def print_idea():
     cmd = ["lp"]
     if PRINTER_NAME:
         cmd += ["-d", PRINTER_NAME]
+    cmd += PRINT_OPTIONS
     cmd.append(str(path))
 
     try:

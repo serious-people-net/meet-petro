@@ -3,6 +3,10 @@
    Reuses the app tokens from index.css; adds one accent.
    ============================================================ */
 
+/* restore cursor for the product page / web demo */
+*, *::before, *::after { cursor: auto !important; }
+a, button, [role=button], label, select { cursor: pointer !important; }
+
 :root {
   --accent: #c2541c; /* burnt orange — remove by pointing this at var(--ink) */
   --page:   #e8e9ec;
