@@ -24,19 +24,20 @@ PRINTOUTS = DIST / "printouts"
 # Update this once the exhibit printer model is known.
 PRINTER_NAME = "petroprinter"
 
-# Back cover printed on the reverse of every idea sheet.
+# Back cover printed on the reverse of every idea sheet (duplex).
+# Set DUPLEX=True to re-enable once print quality on duplex is acceptable.
 BACK_COVER = "BACK-COVER.png"
+DUPLEX = False
 
-# lp options: A5, rear tray, greyscale, highest quality, fill page, duplex
-# Duplex=DuplexNoTumble = long-edge flip (portrait). This is the PPD-style option;
-# the IPP-style `sides=two-sided-long-edge` is ignored by this printer.
+# lp options. PPD-style names — IPP-style equivalents were silently ignored
+# by this printer (e.g. sides= had no effect; Duplex= works).
 PRINT_OPTIONS = [
-    "-o", "media=A5",
-    "-o", "media-source=rear",
-    "-o", "print-color-mode=monochrome",
-    "-o", "print-quality=5",
+    "-o", "PageSize=A5",
+    "-o", "InputSlot=Rear",
+    "-o", "ColorModel=Gray",
+    "-o", "cupsPrintQuality=High",
     "-o", "print-scaling=fill",
-    "-o", "Duplex=DuplexNoTumble",
+    # "-o", "Duplex=DuplexNoTumble",  # re-enable with DUPLEX=True
 ]
 
 app = Flask(__name__)
@@ -65,30 +66,46 @@ def print_idea():
     except (KeyError, FileNotFoundError) as exc:
         return jsonify({"ok": False, "error": str(exc)}), 404
 
-    back_path = PRINTOUTS / BACK_COVER
-
-    # Combine front poster + back cover into a 2-page PDF for duplex printing.
-    tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
-    tmp_path = tmp.name
-    tmp.close()
-    try:
-        subprocess.run(
-            ["convert", "-density", "300", "-compress", "lossless",
-             str(front_path), str(back_path), tmp_path],
-            check=True, capture_output=True, text=True, timeout=30,
-        )
-        cmd = ["lp"]
-        if PRINTER_NAME:
-            cmd += ["-d", PRINTER_NAME]
-        cmd += PRINT_OPTIONS
-        cmd.append(tmp_path)
-        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=10)
-    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        app.logger.error("print failed: %s\nstdout: %s\nstderr: %s",
-                         exc, getattr(exc, "stdout", ""), getattr(exc, "stderr", ""))
-        return jsonify({"ok": False, "error": "print command failed"}), 500
-    finally:
-        os.unlink(tmp_path)
+    if DUPLEX:
+        # Combine front + back cover into a 2-page PDF and print duplex.
+        # Re-enable by setting DUPLEX=True and uncommenting Duplex= in PRINT_OPTIONS.
+        # Note: Canon TS7451a reduces ink density on duplex (firmware behaviour,
+        # not overridable via CUPS), so quality is noticeably lower.
+        back_path = PRINTOUTS / BACK_COVER
+        tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+        tmp_path = tmp.name
+        tmp.close()
+        try:
+            subprocess.run(
+                ["convert", "-density", "300", "-compress", "lossless",
+                 str(front_path), str(back_path), tmp_path],
+                check=True, capture_output=True, text=True, timeout=30,
+            )
+            cmd = ["lp"]
+            if PRINTER_NAME:
+                cmd += ["-d", PRINTER_NAME]
+            cmd += PRINT_OPTIONS
+            cmd.append(tmp_path)
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=10)
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            app.logger.error("print failed: %s\nstdout: %s\nstderr: %s",
+                             exc, getattr(exc, "stdout", ""), getattr(exc, "stderr", ""))
+            return jsonify({"ok": False, "error": "print command failed"}), 500
+        finally:
+            os.unlink(tmp_path)
+    else:
+        # Single-sided: print the front poster directly.
+        try:
+            cmd = ["lp"]
+            if PRINTER_NAME:
+                cmd += ["-d", PRINTER_NAME]
+            cmd += PRINT_OPTIONS
+            cmd.append(str(front_path))
+            subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=10)
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            app.logger.error("print failed: %s\nstdout: %s\nstderr: %s",
+                             exc, getattr(exc, "stdout", ""), getattr(exc, "stderr", ""))
+            return jsonify({"ok": False, "error": "print command failed"}), 500
 
     return jsonify({"ok": True, "file": front_path.name})
 
