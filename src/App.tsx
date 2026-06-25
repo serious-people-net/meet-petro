@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from 'react'
 
 /* ---- mascot image registry ----------------------------------------- */
 const mascotModules = import.meta.glob<string>('./assets/mascots/*.png', { eager: true, import: 'default' })
@@ -345,6 +345,161 @@ function BlobScreen({ dur, onDone }: { dur: number; onDone: () => void }) {
   )
 }
 
+/* ---- admin panel ---------------------------------------------------- */
+type NetworkInfo = { ip: string | null; ssid: string | null }
+type AdminAction = 'switch' | 'restart' | 'kill'
+const ADMIN_ACTIONS: AdminAction[] = ['switch', 'restart', 'kill']
+
+function AdminPanel({ onClose }: { onClose: () => void }) {
+  const [net, setNet] = useState<NetworkInfo>({ ip: null, ssid: null })
+  const [msg, setMsg] = useState<string | null>(null)
+  const [sel, setSel] = useState(0)
+
+  // Refs so the single stable keyboard handler always sees current values
+  const netRef = useRef(net)
+  const selRef = useRef(sel)
+  const msgRef = useRef(msg)
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { netRef.current = net }, [net])
+  useEffect(() => { selRef.current = sel }, [sel])
+  useEffect(() => { msgRef.current = msg }, [msg])
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
+
+  // Poll network status every 2 s
+  useEffect(() => {
+    let active = true
+    const poll = () => {
+      fetch('/api/network').then(r => r.json())
+        .then(d => { if (active) setNet({ ip: d.ip ?? null, ssid: d.ssid ?? null }) })
+        .catch(() => {})
+        .finally(() => { if (active) setTimeout(poll, 2000) })
+    }
+    poll()
+    return () => { active = false }
+  }, [])
+
+  const doSwitch = useCallback(() => {
+    if (msgRef.current) return
+    const onPrinter = netRef.current.ssid?.startsWith('DIRECT-') ?? false
+    const mode = onPrinter ? 'maintenance' : 'printer'
+    setMsg(onPrinter ? 'Switching to home WiFi…' : 'Switching to printer WiFi…')
+    fetch('/api/network', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode }),
+    })
+      .then(() => setTimeout(() => setMsg(null), 3000))
+      .catch(() => { setMsg('Switch failed'); setTimeout(() => setMsg(null), 3000) })
+  }, [])
+
+  const doRestart = useCallback(() => {
+    if (msgRef.current) return
+    setMsg('Restarting…')
+    fetch('/api/admin/restart', { method: 'POST' }).catch(() => {})
+    // kiosk dies and restarts — display goes dark then back
+  }, [])
+
+  const doKill = useCallback(() => {
+    if (msgRef.current) return
+    setMsg('Stopping kiosk…')
+    fetch('/api/admin/stop', { method: 'POST' }).catch(() => {})
+    // kiosk dies — display goes dark, shell is waiting
+  }, [])
+
+  const HANDLERS: Record<AdminAction, () => void> = useMemo(
+    () => ({ switch: doSwitch, restart: doRestart, kill: doKill }),
+    [doSwitch, doRestart, doKill]
+  )
+  const handlersRef = useRef(HANDLERS)
+  useEffect(() => { handlersRef.current = HANDLERS }, [HANDLERS])
+
+  // Single stable keyboard listener — registered once, uses refs
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') { e.preventDefault(); onCloseRef.current(); return }
+      if (e.key === 'Escape') { e.preventDefault(); onCloseRef.current(); return }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setSel(s => Math.max(0, s - 1)); return }
+      if (e.key === 'ArrowDown') { e.preventDefault(); setSel(s => Math.min(ADMIN_ACTIONS.length - 1, s + 1)); return }
+      if (e.key === 'Enter')     { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[selRef.current]](); return }
+      const idx = ['1','2','3'].indexOf(e.key)
+      if (idx !== -1) { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[idx]]() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const onPrinterNet = net.ssid?.startsWith('DIRECT-') ?? false
+  const switchLabel = onPrinterNet ? 'Switch to home WiFi' : 'Switch to printer WiFi'
+
+  const row = (label: string, value: React.ReactNode) => (
+    <div style={{ display: 'flex', gap: 16, alignItems: 'center', fontSize: 14 }}>
+      <span style={{ color: '#555', minWidth: 64, flexShrink: 0 }}>{label}</span>
+      <span style={{ color: '#ccc', fontFamily: 'monospace', wordBreak: 'break-all' }}>{value ?? '—'}</span>
+    </div>
+  )
+
+  const btn = (idx: number, label: string, danger = false) => {
+    const focused = sel === idx && !msg
+    return (
+      <button
+        onClick={() => HANDLERS[ADMIN_ACTIONS[idx]]()}
+        style={{
+          width: '100%', padding: '13px 18px', border: 'none', borderRadius: 8,
+          background: focused ? (danger ? '#450a0a' : '#0f2640') : '#161616',
+          color: danger ? (focused ? '#fca5a5' : '#ef4444') : (focused ? '#e2e8f0' : '#94a3b8'),
+          fontSize: 15, textAlign: 'left', cursor: 'pointer',
+          outline: focused ? `1.5px solid ${danger ? '#ef4444' : '#3b82f6'}` : '1.5px solid transparent',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          transition: 'background 0.1s',
+        }}
+      >
+        <span>{label}</span>
+        <span style={{ opacity: 0.35, fontSize: 12 }}>{idx + 1}</span>
+      </button>
+    )
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.88)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        width: 360, background: '#0d0d0d', borderRadius: 14,
+        padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: 20,
+        border: '1px solid #1e1e1e',
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', color: '#444', textTransform: 'uppercase' }}>
+          Admin
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {row('Network', net.ssid)}
+          {row('IP', net.ip)}
+          {row('Printer', onPrinterNet
+            ? <span style={{ color: '#4ade80' }}>● reachable</span>
+            : <span style={{ color: '#555' }}>● not on printer network</span>
+          )}
+        </div>
+
+        {msg ? (
+          <div style={{ fontSize: 14, color: '#64748b', textAlign: 'center', padding: '10px 0' }}>{msg}</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {btn(0, switchLabel)}
+            {btn(1, 'Restart kiosk')}
+            {btn(2, 'Kill kiosk → shell', true)}
+          </div>
+        )}
+
+        <div style={{ fontSize: 11, color: '#2a2a2a', textAlign: 'center' }}>
+          ↑↓ navigate · Enter select · Esc close
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---- fit-to-viewport ----------------------------------------------- */
 function FitStage({ children, pad = 40 }: { children: React.ReactNode; pad?: number }) {
   const inner = useRef<HTMLDivElement>(null)
@@ -553,6 +708,7 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
   const [selIndex, setSelIndex] = useState(0)
   const [sel, setSel] = useState<Record<string, string>>({})
   const [art, setArt] = useState<string | null>(null)
+  const [adminOpen, setAdminOpen] = useState(false)
   const phaseRef = useRef(phase); phaseRef.current = phase
   const selIndexRef = useRef(selIndex); selIndexRef.current = selIndex
   const selRef = useRef(sel); selRef.current = sel
@@ -590,6 +746,7 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (adminOpen) return
       const n = FLOW[phaseRef.current]
       const enter = e.key === 'Enter' || e.key === ' '
       if (n.type === 'welcome') {
@@ -604,7 +761,19 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [advance, confirm, goReset])
+  }, [advance, confirm, goReset, adminOpen])
+
+  // Ctrl+Shift+M — admin panel toggle
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault()
+        setAdminOpen(o => !o)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // kiosk: reset after 2 minutes of inactivity on a selector
   useEffect(() => {
@@ -655,9 +824,15 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
         <FitStage pad={0}>
           <div className="kiosk-glass">{inner}</div>
         </FitStage>
+        {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} />}
       </div>
     )
   }
 
-  return <WebStage navHeight={navHeight}>{inner}</WebStage>
+  return (
+    <>
+      <WebStage navHeight={navHeight}>{inner}</WebStage>
+      {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} />}
+    </>
+  )
 }

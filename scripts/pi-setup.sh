@@ -49,6 +49,18 @@ else
   git clone "$REPO_URL" "$REPO"
 fi
 
+echo "-- wifi-switch.sh permissions --"
+chmod +x "$HERE/wifi-switch.sh"
+SUDOERS_FILE=/etc/sudoers.d/020-petro-wifi
+if [ ! -f "$SUDOERS_FILE" ]; then
+  echo "$USER_NAME ALL=(root) NOPASSWD: $REPO/scripts/wifi-switch.sh" \
+    | sudo tee "$SUDOERS_FILE" > /dev/null
+  sudo chmod 0440 "$SUDOERS_FILE"
+  echo "  sudoers rule installed — Flask can now switch WiFi networks"
+else
+  echo "  sudoers rule already present"
+fi
+
 echo "-- systemd unit (installed, NOT enabled — no autostart yet) --"
 sudo cp "$HERE/petro-kiosk.service" /etc/systemd/system/petro-kiosk.service
 sudo sed -i "s|__USER__|$USER_NAME|g; s|__REPO__|$REPO|g" \

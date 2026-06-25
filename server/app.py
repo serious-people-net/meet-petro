@@ -11,6 +11,7 @@ Print:  POST /api/print  {"audience": "divorced-men", "emotion": "fear"}
 
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -41,6 +42,66 @@ PRINT_OPTIONS = [
 ]
 
 app = Flask(__name__)
+
+WIFI_SWITCH = Path(__file__).resolve().parent.parent / 'scripts' / 'wifi-switch.sh'
+
+
+def _wlan_ip() -> str | None:
+    try:
+        r = subprocess.run(['ip', '-4', 'addr', 'show', 'wlan0'],
+                           capture_output=True, text=True, timeout=5)
+        m = re.search(r'inet (\d+\.\d+\.\d+\.\d+)', r.stdout)
+        return m.group(1) if m else None
+    except Exception:
+        return None
+
+
+def _active_ssid() -> str | None:
+    try:
+        r = subprocess.run(['nmcli', '-t', '-f', 'ACTIVE,SSID', 'dev', 'wifi'],
+                           capture_output=True, text=True, timeout=5)
+        for line in r.stdout.splitlines():
+            if line.startswith('yes:'):
+                return line[4:]
+        return None
+    except Exception:
+        return None
+
+
+@app.get('/api/network')
+def network_status():
+    return jsonify({'ip': _wlan_ip(), 'ssid': _active_ssid()})
+
+
+@app.post('/api/network')
+def network_switch():
+    data = request.get_json(silent=True) or {}
+    mode = data.get('mode', '')
+    if mode not in ('printer', 'maintenance'):
+        return jsonify({'ok': False, 'error': 'mode must be printer or maintenance'}), 400
+    if not WIFI_SWITCH.exists():
+        return jsonify({'ok': False, 'error': 'wifi-switch.sh not found'}), 501
+    subprocess.Popen(['sudo', str(WIFI_SWITCH), mode],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return jsonify({'ok': True, 'mode': mode})
+
+
+@app.post('/api/admin/stop')
+def admin_stop():
+    if not WIFI_SWITCH.exists():
+        return jsonify({'ok': False, 'error': 'wifi-switch.sh not found'}), 501
+    subprocess.Popen(['sudo', str(WIFI_SWITCH), 'stop'],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return jsonify({'ok': True})
+
+
+@app.post('/api/admin/restart')
+def admin_restart():
+    if not WIFI_SWITCH.exists():
+        return jsonify({'ok': False, 'error': 'wifi-switch.sh not found'}), 501
+    subprocess.Popen(['sudo', str(WIFI_SWITCH), 'restart'],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return jsonify({'ok': True})
 
 
 def load_matrix() -> dict:

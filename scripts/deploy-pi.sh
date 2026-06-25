@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Build the frontend and push everything the Pi needs.
-# Usage: ./scripts/deploy-pi.sh [host]   (default host: petro)
+# Usage: ./scripts/deploy-pi.sh [host]   (default: petro)
 set -euo pipefail
 
 HOST="${1:-petro}"
-DEST="~/petro"
+DEST="~/meet-petro"
 
 cd "$(dirname "$0")/.."
 
 npm run build
-rsync -av --delete dist/ "$HOST:$DEST/dist/"
-rsync -av server/ "$HOST:$DEST/server/"
+rsync -av --delete              dist/    "$HOST:$DEST/dist/"
+rsync -av                       server/  "$HOST:$DEST/server/"
+rsync -av --perms               scripts/ "$HOST:$DEST/scripts/"
 
-echo "Deployed. On the Pi: cd ~/petro/server && python app.py"
-echo "(systemd restarts it automatically if the petro service is installed — see docs/PI-SETUP.md)"
-ssh "$HOST" 'sudo systemctl restart petro 2>/dev/null || true'
+ssh "$HOST" 'sudo systemctl restart petro-kiosk 2>/dev/null || true'
+echo "Deployed to $HOST"

@@ -17,7 +17,8 @@ latest code (when online), serves it, and displays it.
 ## Hardware as built (June 2026)
 
 - Raspberry Pi 5, 2GB, Debian 13 (trixie) / Pi OS Lite 64-bit
-- User: `olifrost`; reachable as `ssh petro`
+- User: `olifrost`; reachable as `ssh petro` (requires same network)
+- Keyboard: ortholinear, has number row, **no F-keys**
 - Display: **HDMI** (`card1-HDMI-A-1`), 1080×1080 round panel
 - Printer: **Canon PIXMA TS7451a** on the local WiFi network
 
@@ -125,19 +126,79 @@ sudo apt-get install -y imagemagick
 **Tray options:** `media-source=auto` (printer chooses), `main` (front cassette),
 `rear` (rear tray). Exhibit setup uses `rear`.
 
-**Future:** for a stand-alone exhibit without site WiFi, connect the Pi directly
-to the printer's WiFi Direct AP. The Pi would then have no internet, so the
-kiosk script's `git pull` step would be skipped and it would use the last build.
+### WiFi Direct (exhibition mode)
+
+For a stand-alone exhibit the Pi connects to the **printer's WiFi Direct AP**
+instead of venue WiFi. The printer acts as the AP; the Pi is the only client.
+The Pi then has no internet, so `git pull` is skipped and the last good build
+is used.
+
+#### 1. Find the printer's WiFi Direct credentials
+
+On the printer touchscreen:
+**Settings → LAN settings → Wireless Direct → Show settings**
+Note the SSID (`DIRECT-xxxx-TS7451a`) and password.
+
+#### 2. Create NetworkManager profiles (run once on the Pi)
+
+```bash
+# Auto-connects on boot — the exhibition profile
+sudo nmcli con add type wifi con-name printer-direct \
+  ssid "DIRECT-4Vpetro" \
+  wifi-sec.key-mgmt wpa-psk wifi-sec.psk "meetpetro1" \
+  connection.autoconnect yes connection.autoconnect-priority 100
+
+# Manual only — for SSH access during development/maintenance
+sudo nmcli con add type wifi con-name maintenance \
+  ssid "YourHomeNetwork" \
+  wifi-sec.key-mgmt wpa-psk wifi-sec.psk "WIFI_PASSWORD" \
+  connection.autoconnect no connection.autoconnect-priority 0
+```
+
+#### 3. Allow Flask to trigger network switches (sudoers, run once)
+
+The in-app maintenance shortcut calls `wifi-switch.sh` via sudo:
+
+```bash
+echo 'olifrost ALL=(root) NOPASSWD: /home/olifrost/meet-petro/scripts/wifi-switch.sh' \
+  | sudo tee /etc/sudoers.d/020-petro-wifi
+sudo chmod 0440 /etc/sudoers.d/020-petro-wifi
+sudo chmod +x /home/olifrost/meet-petro/scripts/wifi-switch.sh
+```
+
+#### 4. Test printing on the direct network
+
+```bash
+# Connect to the printer's AP
+sudo nmcli con up printer-direct
+
+# Discover the printer's IP on this network (usually 192.168.0.1 for Canon)
+avahi-browse -rpt _ipp._tcp | grep -i canon
+
+# Update CUPS to use the new IP
+sudo lpadmin -x petroprinter
+sudo lpadmin -p petroprinter -E \
+  -v ipp://192.168.115.1:631/ipp/print \
+  -m everywhere
+lpstat -p    # confirm "petroprinter" idle
+
+# Test print
+lp -d petroprinter -o PageSize=A5 -o InputSlot=Rear \
+  ~/meet-petro/dist/printouts/WIFE.png
+```
 
 ## Escape hatches
 
-- **Over SSH (cleanest):** `ssh petro 'sudo systemctl stop petro-kiosk'`
-  — verified: tears down cage, chromium, and Flask in one shot, releases the
-  GPU. `sudo systemctl start petro-kiosk` brings it back.
+- **In-app shortcut (primary):** `Ctrl+Shift+M` switches to the maintenance
+  WiFi network and shows the Pi's IP on screen. SSH in, do your work, then
+  `Ctrl+Shift+M` again to return to the printer network. Designed for the
+  ortholinear keyboard (no F-keys). See [WiFi Direct setup](#wifi-direct-exhibition-mode)
+  for the one-time NM profile + sudoers setup this requires.
+- **Over SSH (if already on the same network):** `ssh petro 'sudo systemctl stop petro-kiosk'`
+  — tears down cage, chromium, and Flask in one shot. `sudo systemctl start petro-kiosk` brings it back.
 - **Blunt:** `pkill -f cage` (the service has `Restart=no`, so it stays down).
-- **On the Pi keyboard:** `Ctrl+Alt+F2` switches to a text TTY (works under
-  KMS/Wayland) — log in as `olifrost`, manage, `Ctrl+Alt+F1` to switch back.
-  cage has no custom keybindings, so VT-switch + SSH is the escape (no Alt+F4).
+- **Note:** `Ctrl+Alt+F2` (TTY switch) is documented elsewhere but requires F-keys —
+  the exhibit keyboard is ortholinear with no F-row, so it won't work.
 
 ## Autostart (enable when finalised)
 
