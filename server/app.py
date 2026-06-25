@@ -10,9 +10,9 @@ Print:  POST /api/print  {"audience": "divorced-men", "emotion": "fear"}
 """
 
 import json
-import re
+import os
 import subprocess
-import time
+import tempfile
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -24,12 +24,17 @@ PRINTOUTS = DIST / "printouts"
 # Update this once the exhibit printer model is known.
 PRINTER_NAME = "petroprinter"
 
-# lp options: A5 paper, greyscale, highest quality, scale image to fill page
+# Back cover printed on the reverse of every idea sheet.
+BACK_COVER = "BACK-COVER.png"
+
+# lp options: A5, rear tray, greyscale, highest quality, fill page, duplex
 PRINT_OPTIONS = [
     "-o", "media=A5",
+    "-o", "media-source=rear",
     "-o", "print-color-mode=monochrome",
     "-o", "print-quality=5",
     "-o", "print-scaling=fill",
+    "-o", "sides=two-sided-long-edge",
 ]
 
 app = Flask(__name__)
@@ -54,33 +59,34 @@ def print_idea():
     audience = data.get("audience", "")
     emotion = data.get("emotion", "")
     try:
-        path = printout_for(audience, emotion)
+        front_path = printout_for(audience, emotion)
     except (KeyError, FileNotFoundError) as exc:
         return jsonify({"ok": False, "error": str(exc)}), 404
 
-    cmd = ["lp"]
-    if PRINTER_NAME:
-        cmd += ["-d", PRINTER_NAME]
-    cmd += PRINT_OPTIONS
-    cmd.append(str(path))
+    back_path = PRINTOUTS / BACK_COVER
 
+    # Combine front poster + back cover into a 2-page PDF for duplex printing.
+    tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    tmp_path = tmp.name
+    tmp.close()
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=10)
+        subprocess.run(
+            ["convert", str(front_path), str(back_path), tmp_path],
+            check=True, capture_output=True, text=True, timeout=30,
+        )
+        cmd = ["lp"]
+        if PRINTER_NAME:
+            cmd += ["-d", PRINTER_NAME]
+        cmd += PRINT_OPTIONS
+        cmd.append(tmp_path)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=10)
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         app.logger.error("print failed: %s", exc)
         return jsonify({"ok": False, "error": "print command failed"}), 500
+    finally:
+        os.unlink(tmp_path)
 
-    # Block until CUPS reports the job as complete (disappears from active queue).
-    m = re.search(r'request id is (\S+)', result.stdout)
-    if m:
-        job_id = m.group(1)
-        for _ in range(90):
-            check = subprocess.run(['lpstat', '-o', job_id], capture_output=True, text=True)
-            if job_id not in check.stdout:
-                break
-            time.sleep(1)
-
-    return jsonify({"ok": True, "file": path.name})
+    return jsonify({"ok": True, "file": front_path.name})
 
 
 @app.get("/")

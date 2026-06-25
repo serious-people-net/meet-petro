@@ -74,7 +74,7 @@ const FLOW: FlowNode[] = [
   { type: 'select', store: 'emotion', title: 'What emotion\nshould we\nmanipulate?', options: EMOTIONS, titleXs: true },
   { type: 'loader', headlines: ["Now we're\ncooking!"], dur: 2200, sound: 'cheer' },
   {
-    type: 'loader', think: true, dur: 21000,
+    type: 'loader', think: true, dur: 22000,
     headlines: [
       'Having deep\nstrategic thoughts…',
       'Greenwashing\nthe greenwash…',

@@ -19,7 +19,7 @@ latest code (when online), serves it, and displays it.
 - Raspberry Pi 5, 2GB, Debian 13 (trixie) / Pi OS Lite 64-bit
 - User: `olifrost`; reachable as `ssh petro`
 - Display: **HDMI** (`card1-HDMI-A-1`), 1080×1080 round panel
-- Printer: TBD (CUPS)
+- Printer: **Canon PIXMA TS7451a** on the local WiFi network
 
 ## Quick start
 
@@ -89,18 +89,45 @@ once the real panel is in hand.
 startup; if you hotplug the panel while it's already running, restart the
 service (`sudo systemctl restart petro-kiosk`).
 
-## Printer (model TBD)
+## Printer (Canon PIXMA TS7451a)
 
-Once the printer model is known:
+The printer is on the local WiFi. It was added using driverless IPP Everywhere —
+no Canon-specific driver needed.
 
 ```bash
-sudo lpadmin -p petroprinter -E -v <device-uri> -m <driver>
-lpstat -p                                       # confirm the name
-lp ~/meet-petro/dist/printouts/<file>.png       # test print
+# Discover the printer's IPP URI via mDNS (avahi-utils must be installed):
+sudo apt-get install -y avahi-utils
+avahi-browse -rpt _ipp._tcp | grep -i canon     # find the IP + port
+
+# Add it to CUPS:
+sudo lpadmin -p petroprinter -E \
+  -v ipp://192.168.1.187:631/ipp/print \
+  -m everywhere
+lpstat -p                                        # confirm "petroprinter" is idle
+
+# Test print (A5, greyscale, high quality, duplex, rear tray):
+lp -d petroprinter \
+   -o media=A5 -o media-source=rear \
+   -o print-color-mode=monochrome -o print-quality=5 \
+   -o print-scaling=fill -o sides=two-sided-long-edge \
+   ~/meet-petro/dist/printouts/WIFE.png
 ```
 
-Then set `PRINTER_NAME = "petroprinter"` in `server/app.py` (leave `None` to
-use the system default printer).
+`PRINTER_NAME = "petroprinter"` is already set in `server/app.py`. The server
+uses ImageMagick (`convert`) to combine the idea sheet and `BACK-COVER.png` into
+a two-page PDF, then prints it duplex (long-edge, rear tray). ImageMagick must
+be installed on the Pi:
+
+```bash
+sudo apt-get install -y imagemagick
+```
+
+**Tray options:** `media-source=auto` (printer chooses), `main` (front cassette),
+`rear` (rear tray). Exhibit setup uses `rear`.
+
+**Future:** for a stand-alone exhibit without site WiFi, connect the Pi directly
+to the printer's WiFi Direct AP. The Pi would then have no internet, so the
+kiosk script's `git pull` step would be skipped and it would use the last build.
 
 ## Escape hatches
 
@@ -119,9 +146,35 @@ sudo systemctl enable petro-kiosk      # now survives reboot
 sudo reboot                            # confirm it comes up into the app
 ```
 
+## Cursor suppression (kiosk)
+
+The app CSS sets `cursor: none !important` so no software cursor is rendered by
+Chromium. The harder problem is the **hardware cursor** drawn by
+wlroots/cage itself before Chromium has loaded.
+
+**What was tried:**
+
+1. `XCURSOR_THEME=Hidden` env var — wlroots reads this theme to pick a cursor
+   image. We created `~/.local/share/icons/Hidden/index.theme` (required so
+   XCursor validates the theme; without it, wlroots falls back to `default`).
+2. Transparent XCursor binary files — created 36 cursor names (incl. `default`,
+   `left_ptr`) as 1×1 transparent images in
+   `~/.local/share/icons/Hidden/cursors/`. The cursor disappears once Chromium
+   loads and an input event fires, but the cursor is briefly visible at startup.
+
+**Current status:** cursor vanishes after the first touch/input event but is
+visible for a second or two on cold boot. Root cause: wlroots renders the cursor
+at startup before reading the theme, or the theme lookup is deferred until the
+first pointer event. No fully clean fix found yet without patching cage.
+
+**Workaround candidates not yet tried:**
+- Start cage with `WLR_NO_HARDWARE_CURSORS=1` (forces software cursor path —
+  may have side-effects with touch input)
+- Delay the kiosk script so the system is fully idle before cage starts
+
 ## Verification status
 
-**Verified headless (no display attached), June 2026:**
+**Verified (June 2026):**
 
 - [x] Full stack installs from a fresh Lite image via `pi-setup.sh`
 - [x] `systemctl start` builds the frontend, starts Flask, launches chromium
@@ -131,10 +184,15 @@ sudo reboot                            # confirm it comes up into the app
       circular panel under `?app`
 - [x] Panel comes up at 1080×1080 (else apply the KMS modeline above)
 - [x] Keyboard arrows + Enter drive the flow; touch works (chevrons/taps/swipes)
+- [x] Printing works end-to-end: Canon TS7451a on WiFi, A5, greyscale, duplex,
+      rear tray; back cover (BACK-COVER.png) printed on reverse of every sheet
+- [x] Print fires during "Now we're cooking!" loader; success screen delayed
+      22 s (thinking animation) to allow time for the physical print to emerge
 
-**Still to test once the round panel is connected ("screen day"):**
+**Still to verify / known issues:**
 
-- [ ] Screen blanking off (`sudo raspi-config` → Display → Screen Blanking),
-      sound output works
-- [ ] Test print from each audience×emotion combination (needs printer)
+- [ ] Cursor visible for ~1–2 s on cold boot before first touch event hides it
+- [ ] Screen blanking off (`sudo raspi-config` → Display → Screen Blanking)
+- [ ] Sound output confirmed on exhibit hardware
 - [ ] `sudo systemctl enable petro-kiosk`, reboot, confirm it auto-launches
+- [ ] Test all 20 audience×emotion combinations end-to-end
