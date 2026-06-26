@@ -27,7 +27,7 @@
 
 /* ---- keyframes ---- */
 @keyframes petro-blink   { 0%,48%{opacity:1} 49%,100%{opacity:0} }
-@keyframes petro-bob     { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3.5px)} }
+@keyframes petro-bob     { 0%,100%{transform:translateY(-2.5px)} 50%{transform:translateY(2.5px)} }
 @keyframes petro-cue     { 0%,100%{opacity:.42} 50%{opacity:.92} }
 @keyframes petro-fadein  { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
 
@@ -127,9 +127,22 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
 }
 .scr-fade { animation: petro-fadein .4s ease both; }
 
-.scr .zone-top { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.scr .zone-mid { display: flex; align-items: center; justify-content: center; }
-.scr .zone-bot { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+/* Three fixed zones, absolutely anchored so the Petro art never reflows the
+   headline or the controls. Each screen reads as: headline / Petro / controls
+   in exactly the same place, whatever the art's canvas size. */
+.scr .zone-top {
+  position: absolute; left: 0; right: 0; top: 0; height: 102px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  gap: 4px;
+}
+.scr .zone-mid {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+}
+.scr .zone-bot {
+  position: absolute; left: 0; right: 0; bottom: 50px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
 
 .scr .headline {
   font-family: var(--display); font-weight: 800;
@@ -144,7 +157,9 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
 }
 
 /* ---- Petro art ---- */
-.petro-art { display: flex; align-items: center; justify-content: center; }
+/* Nudged a touch below the geometric centre: the leg/shadow mass sits low,
+   so a dead-centre canvas reads as floating high. */
+.petro-art { display: flex; align-items: center; justify-content: center; transform: translateY(6px); }
 .petro-art img {
   display: block; width: 148px; height: 164px;
   object-fit: contain; object-position: center center;
@@ -261,6 +276,7 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
   transition: width .12s linear;
 }
 .loadbar.appear { animation: petro-fadein .5s ease both; }
+.loadbar.is-pending { opacity: 0; }
 .reset-hint { font-size: 13px; color: var(--ink-55); animation: petro-fadein .4s ease both; }
 
 /* ============================================================
@@ -271,18 +287,22 @@ html, body { margin: 0; height: 100%; -webkit-font-smoothing: antialiased; }
   to   { transform: none; opacity: 1; }
 }
 .decept img {
-  display: block; max-height: 240px; width: auto;
+  display: block; max-height: 160px; width: auto;
   background: #fff; border: 1px solid var(--ink-15);
   box-shadow: 0 6px 18px rgba(44,48,56,.18);
   animation: decept-print .7s ease both;
 }
 @media (prefers-reduced-motion: reduce) { .decept img { animation: none; } }
+/* Sits in the bottom zone now (above the bar), so it reads as a small button. */
 .decept-dl {
-  display: block; margin-top: 10px; text-align: center;
-  font-family: var(--mono); font-size: 12px; letter-spacing: .8px; text-transform: uppercase;
-  color: var(--ink-55); text-decoration: none; transition: color .15s;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border: 1.5px solid var(--ink-40); border-radius: 999px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--ink-70); text-decoration: none;
+  transition: color .15s, border-color .15s, opacity .25s;
 }
-.decept-dl:hover { color: var(--ink); }
+.decept-dl:hover { color: var(--ink); border-color: var(--ink-70); }
+.decept-dl.is-gone { opacity: 0; pointer-events: none; }
 
 /* ============================================================
    KIOSK MODE — full-viewport screen for the Pi (1080×1080)

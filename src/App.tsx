@@ -201,7 +201,7 @@ function WelcomeScreen({ onBegin, mascotSrc }: { onBegin: () => void; mascotSrc?
       <div className="zone-bot">
         <div className="legend">
           <span className="seg"><span className="kg">&#9664;&#8198;&#9654;</span>Browse</span>
-          <span className="seg"><span className="kg ret pulse">&#8629;</span>Select</span>
+          <span className="seg"><span className="kg pulse">&#9650;&#8198;&#9660;</span>Select</span>
         </div>
       </div>
     </div>
@@ -278,7 +278,9 @@ function SelectScreen({ node, index, onChange, onConfirm, mascotSrc }: {
   )
 }
 
-function SuccessScreen({ onReset, art, mascotSrc, largeMascot }: { onReset: () => void; art?: string | null; mascotSrc?: string; largeMascot?: boolean }) {
+/* Shared reset-bar timing: hold ~2.1s, then a 6.5s bar that flips to the
+   "make another" copy at 72% and finally resets. */
+function useResetBar(onReset: () => void) {
   const cb = useRef(onReset); cb.current = onReset
   const [showBar, setShowBar] = useState(false)
   const [resetting, setResetting] = useState(false)
@@ -304,28 +306,49 @@ function SuccessScreen({ onReset, art, mascotSrc, largeMascot }: { onReset: () =
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [showBar])
-  const reset = () => { Sound.select(); cb.current() }
+  return { showBar, resetting, fillRef, reset: () => { Sound.select(); cb.current() } }
+}
+
+// Kiosk (and web fallback when no artwork resolved): Petro holds the printout.
+function SuccessScreen({ onReset, mascotSrc, largeMascot }: { onReset: () => void; mascotSrc?: string; largeMascot?: boolean }) {
+  const { showBar, resetting, fillRef, reset } = useResetBar(onReset)
   return (
     <div className="scr scr-fade" onClick={reset}>
       <div className="zone-top">
-        {(!art || resetting) && (
-          <div className={`headline${resetting ? ' sm' : ''}`} key={resetting ? 'r' : 'i'} style={{ animation: 'petro-fadein .3s ease both' }}>
-            <Lines text={resetting ? "Let's make some\nmore ideas…" : "Your idea\nis ready"} />
-          </div>
-        )}
+        <div className={`headline${resetting ? ' sm' : ''}`} key={resetting ? 'r' : 'i'} style={{ animation: 'petro-fadein .3s ease both' }}>
+          <Lines text={resetting ? "Let's make some\nmore ideas…" : "Your idea\nis ready"} />
+        </div>
       </div>
-      <div className="zone-mid">
-        {art
-          ? <div className="decept">
-            <img src={art} alt="Your generated Decept" />
-            {!resetting && (
-              <a href={art} download="petro-idea.png" className="decept-dl">↓ Save image</a>
-            )}
-          </div>
-          : <PetroArt src={mascotSrc} large={largeMascot} />}
-      </div>
+      <div className="zone-mid"><PetroArt src={mascotSrc} large={largeMascot} /></div>
       <div className="zone-bot">
         {showBar && <div className="loadbar appear"><div className="fill" ref={fillRef} /></div>}
+      </div>
+    </div>
+  )
+}
+
+// Web demo: show the generated Decept. Fixed three zones — headline / poster /
+// (save + bar) — so nothing reshuffles as the copy swaps or the bar appears.
+function WebSuccessScreen({ onReset, art }: { onReset: () => void; art: string }) {
+  const { showBar, resetting, fillRef, reset } = useResetBar(onReset)
+  return (
+    <div className="scr scr-fade" onClick={reset}>
+      <div className="zone-top">
+        <div className={`headline${resetting ? ' sm' : ''}`} key={resetting ? 'r' : 'i'} style={{ animation: 'petro-fadein .3s ease both' }}>
+          <Lines text={resetting ? "Let's make\nanother idea" : "Your idea\nis ready"} />
+        </div>
+      </div>
+      <div className="zone-mid">
+        <div className="decept"><img src={art} alt="Your generated Decept" /></div>
+      </div>
+      <div className="zone-bot">
+        <a
+          href={art} download="petro-idea.png"
+          className={'decept-dl' + (resetting ? ' is-gone' : '')}
+          onClick={(e) => e.stopPropagation()}
+        >↓ Save image</a>
+        {/* Always rendered so the save link above never shifts; just fades in. */}
+        <div className={'loadbar ' + (showBar ? 'appear' : 'is-pending')}><div className="fill" ref={fillRef} /></div>
       </div>
     </div>
   )
@@ -747,21 +770,28 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (adminOpen) return
+      // Escape always returns to the very start of the experience
+      if (e.key === 'Escape') { e.preventDefault(); Sound.select(); toStart(); return }
       const n = FLOW[phaseRef.current]
       const enter = e.key === 'Enter' || e.key === ' '
+      // Up / Down act as Select everywhere, same as Return
+      const select = enter || e.key === 'ArrowUp' || e.key === 'ArrowDown'
       if (n.type === 'welcome') {
-        if (enter) { e.preventDefault(); Sound.select(); advance() }
+        // Any key starts the experience (ignore bare modifiers + admin combo)
+        if (e.ctrlKey || e.metaKey || e.altKey) return
+        if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) return
+        e.preventDefault(); Sound.select(); advance()
       } else if (n.type === 'select') {
         if (e.key === 'ArrowLeft') { e.preventDefault(); Sound.nav(); setSelIndex((x) => (x - 1 + n.options!.length) % n.options!.length) }
         else if (e.key === 'ArrowRight') { e.preventDefault(); Sound.nav(); setSelIndex((x) => (x + 1) % n.options!.length) }
-        else if (enter) { e.preventDefault(); Sound.select(); confirm() }
+        else if (select) { e.preventDefault(); Sound.select(); confirm() }
       } else if (n.type === 'success') {
-        if (enter) { e.preventDefault(); Sound.select(); goReset() }
+        if (select) { e.preventDefault(); Sound.select(); goReset() }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [advance, confirm, goReset, adminOpen])
+  }, [advance, confirm, goReset, toStart, adminOpen])
 
   // Ctrl+Shift+M — admin panel toggle
   useEffect(() => {
@@ -813,7 +843,9 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
   if (node.type === 'welcome') screen = <WelcomeScreen onBegin={advance} mascotSrc={mascotSrc} />
   else if (node.type === 'loader') screen = <LoaderScreen key={'s' + phase} node={node} onDone={advance} mascotSrc={mascotSrc} waitFor={node.think ? printPromise.current : null} largeMascot={node.think} />
   else if (node.type === 'select') screen = <SelectScreen node={node} index={selIndex} onChange={setSelIndex} onConfirm={confirm} mascotSrc={mascotSrc} />
-  else if (node.type === 'success') screen = <SuccessScreen onReset={goReset} art={KIOSK ? null : art} mascotSrc={mascotSrc} largeMascot={KIOSK} />
+  else if (node.type === 'success') screen = (!KIOSK && art)
+    ? <WebSuccessScreen onReset={goReset} art={art} />
+    : <SuccessScreen onReset={goReset} mascotSrc={mascotSrc} largeMascot={KIOSK} />
   else screen = <BlobScreen key={'s' + phase} dur={node.dur!} onDone={toStart} />
 
   const inner = <><div className="crt-flash" key={'f' + phase} />{screen}</>
