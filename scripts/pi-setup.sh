@@ -49,6 +49,16 @@ else
   git clone "$REPO_URL" "$REPO"
 fi
 
+echo "-- transparent kiosk cursor theme --"
+# Restores the 'Hidden' xcursor theme that XCURSOR_THEME=Hidden depends on.
+chmod +x "$HERE/install-hidden-cursor.sh"
+"$HERE/install-hidden-cursor.sh"
+
+echo "-- printer WiFi Direct profile --"
+# Recreates the 'printer-direct' NM profile the admin panel switches to.
+chmod +x "$HERE/install-printer-wifi.sh"
+sudo -E "$HERE/install-printer-wifi.sh" || echo "(printer-wifi profile setup skipped/failed; continuing)"
+
 echo "-- wifi-switch.sh permissions --"
 chmod +x "$HERE/wifi-switch.sh"
 SUDOERS_FILE=/etc/sudoers.d/020-petro-wifi
