@@ -92,25 +92,27 @@ service (`sudo systemctl restart petro-kiosk`).
 
 ## Printer (Canon PIXMA TS7451a)
 
-The printer is on the local WiFi. It was added using driverless IPP Everywhere —
-no Canon-specific driver needed.
+The app prints to a CUPS queue named `petroprinter`, added with driverless IPP
+Everywhere — no Canon-specific driver needed. That queue is local CUPS state, not
+in the repo, so it must be (re)created after a reimage.
+
+`scripts/install-printer-cups.sh` does this automatically: it finds the printer
+(mDNS, or the WiFi-Direct gateway as a fallback) and creates the queue. It runs
+on its own — `wifi-switch.sh printer` re-runs it on every switch to the printer
+network, and `petro-kiosk.service` runs it at boot — so the queue self-heals and
+tracks the printer's per-session IP. The Pi must be on the printer's network for
+it to find the printer.
 
 ```bash
-# Discover the printer's IPP URI via mDNS (avahi-utils must be installed):
-sudo apt-get install -y avahi-utils
-avahi-browse -rpt _ipp._tcp | grep -i canon     # find the IP + port
+# Recreate by hand (must be on the printer's WiFi Direct AP):
+sudo ~/meet-petro/scripts/install-printer-cups.sh
+# Or force a specific IP if discovery fails:
+PRINTER_IP=192.168.115.1 sudo -E ~/meet-petro/scripts/install-printer-cups.sh
 
-# Add it to CUPS:
-sudo lpadmin -p petroprinter -E \
-  -v ipp://192.168.1.187:631/ipp/print \
-  -m everywhere
 lpstat -p                                        # confirm "petroprinter" is idle
-
-# Test print (A5, greyscale, high quality, duplex, rear tray):
-lp -d petroprinter \
-   -o media=A5 -o media-source=rear \
-   -o print-color-mode=monochrome -o print-quality=5 \
-   -o print-scaling=fill -o sides=two-sided-long-edge \
+# Test print (A5, greyscale, high quality, rear tray):
+lp -d petroprinter -o PageSize=A5 -o InputSlot=Rear -o ColorModel=Gray \
+   -o cupsPrintQuality=High -o print-scaling=fill \
    ~/meet-petro/dist/printouts/WIFE.png
 ```
 

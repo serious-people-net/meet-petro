@@ -13,6 +13,12 @@ MODE="${1:-}"
 case "$MODE" in
   printer)
     nmcli con up printer-direct
+    # The Canon Direct AP hands out a fresh IP each session, so (re)create the
+    # CUPS queue against the printer we can now actually see. Non-fatal: if the
+    # printer isn't up yet, the queue just isn't refreshed this time.
+    HERE="$(cd "$(dirname "$0")" && pwd)"
+    sleep 3
+    "$HERE/install-printer-cups.sh" || echo "wifi-switch: printer queue not refreshed (printer not found yet)"
     ;;
   maintenance)
     nmcli con up "netplan-wlan0-The Internet"

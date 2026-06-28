@@ -23,6 +23,10 @@ ExecStart=__REPO__/scripts/pi-kiosk.sh
 # cursor. `+` runs it as root (needed for sysfs) despite User= above; `-` makes
 # any failure non-fatal so a missing/odd panel can never take down the kiosk.
 ExecStartPost=+-__REPO__/scripts/hide-cursor-replug.sh
+# If we booted onto the printer's WiFi Direct AP, (re)create the CUPS queue the
+# app prints to — its IP can change per session. `+` runs as root (lpadmin); `-`
+# keeps a missing/absent printer from taking down the kiosk. No-op off that AP.
+ExecStartPost=+-__REPO__/scripts/install-printer-cups.sh
 # On exit you land on a TTY to maintain things; don't respawn the browser.
 Restart=no
 

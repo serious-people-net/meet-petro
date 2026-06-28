@@ -22,10 +22,11 @@ sudo apt update
 # cage:      Wayland kiosk compositor (runs one fullscreen app, the browser)
 # chromium:  the browser the app runs in
 # python3-flask: serves dist/ and handles /api/print  (single process)
-# cups:      printing (printer model still TBD; harmless to have ready)
+# cups:      printing (Canon TS7451a via driverless IPP Everywhere)
+# avahi-utils: avahi-browse, used to discover the printer on the Direct AP
 # seatd:     seat manager so cage can reach the GPU/input (libseat fallback)
 # git/curl:  fetch + build the app
-sudo apt install -y cage chromium python3-flask cups git curl seatd
+sudo apt install -y cage chromium python3-flask cups avahi-utils git curl seatd
 
 echo "-- Node 22 (NodeSource) --"
 if ! command -v node >/dev/null 2>&1 || [ "$(node -v | sed 's/v\([0-9]*\).*/\1/')" -lt 22 ]; then
