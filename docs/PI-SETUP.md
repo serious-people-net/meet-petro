@@ -22,19 +22,37 @@ latest code (when online), serves it, and displays it.
 - Display: **HDMI** (`card1-HDMI-A-1`), 1080×1080 round panel
 - Printer: **Canon PIXMA TS7451a** on the local WiFi network
 
-## Quick start
+## Quick start (full setup from a fresh image)
+
+Flash **Raspberry Pi OS Lite 64-bit** with Raspberry Pi Imager, presetting in
+its options: hostname `petro`, user `olifrost`, your SSH public key, and the
+**venue WiFi** (so the Pi comes up online for its first build). Then:
 
 ```bash
-# On the Pi (one-time bootstrap — needs git):
+# 1. Bootstrap + run setup (needs git). Installs the whole stack AND restores the
+#    cursor theme + printer WiFi profile; idempotent, safe to re-run.
 sudo apt install -y git
 git clone https://github.com/serious-people-net/meet-petro ~/meet-petro
-~/meet-petro/scripts/pi-setup.sh        # installs everything, idempotent
+~/meet-petro/scripts/pi-setup.sh
 
-# Test the kiosk (does NOT autostart until you `enable` it):
+# 2. Test the kiosk (does NOT autostart until you `enable` it in step 4):
 sudo systemctl start petro-kiosk        # build (if changed) + serve + display
-journalctl -u petro-kiosk -f            # watch it
+journalctl -u petro-kiosk -f            # watch it; Ctrl+C stops watching
 sudo systemctl stop  petro-kiosk        # take it down
+
+# 3. Switch to the printer's WiFi for exhibition mode. This also (re)creates the
+#    CUPS print queue against the printer it now sees — do it on-site.
+sudo ~/meet-petro/scripts/wifi-switch.sh printer
+
+# 4. Once happy, turn on autostart-at-boot and confirm a cold boot:
+sudo systemctl enable petro-kiosk
+sudo reboot
 ```
+
+That is the entire setup. The detail sections below explain each piece and how
+to recover individual parts. The one thing not in the repo is the **venue WiFi**
+used for updates/SSH — set it in the imager (above) or with `nmcli`; see
+[WiFi Direct](#wifi-direct-exhibition-mode).
 
 The setup script needs `sudo`. During build/test we ran it with passwordless
 sudo for `olifrost` (`/etc/sudoers.d/010-petro-nopasswd`); **remove that once
@@ -42,15 +60,27 @@ finalised**: `sudo rm /etc/sudoers.d/010-petro-nopasswd`.
 
 ## What `scripts/pi-setup.sh` installs (idempotent)
 
+**Packages:**
+
 - `cage` — Wayland kiosk compositor (runs one fullscreen app: the browser)
 - `chromium` — the browser
 - `python3-flask` — serves `dist/` **and** handles `/api/print` (one process)
-- `cups` — printing (printer model still TBD)
+- `cups` + `avahi-utils` — printing (Canon TS7451a) and printer discovery
 - `seatd` — seat manager so cage gets the GPU + input **without** a login
   session on a VT (the key to launching headless / over SSH)
 - `git`, `curl`, and **Node 22** (NodeSource) to build the frontend
+
+**Repo + system config:**
+
 - clones the repo to `~/meet-petro`
 - installs `petro-kiosk.service` but does **not** enable it (no autostart yet)
+- restores the transparent **cursor theme** (`install-hidden-cursor.sh`)
+- (re)creates the **`printer-direct` NM profile** (`install-printer-wifi.sh`)
+- installs the **sudoers rule** letting Flask run `wifi-switch.sh`
+
+The **CUPS print queue** is *not* created here — it needs the printer's network,
+so it's made on first switch to `printer-direct` (and at each boot on it). See
+[Printer](#printer-canon-pixma-ts7451a).
 
 ## The launch flow (`scripts/pi-kiosk.sh`)
 
@@ -116,14 +146,12 @@ lp -d petroprinter -o PageSize=A5 -o InputSlot=Rear -o ColorModel=Gray \
    ~/meet-petro/dist/printouts/WIFE.png
 ```
 
-`PRINTER_NAME = "petroprinter"` is already set in `server/app.py`. The server
-uses ImageMagick (`convert`) to combine the idea sheet and `BACK-COVER.png` into
-a two-page PDF, then prints it duplex (long-edge, rear tray). ImageMagick must
-be installed on the Pi:
-
-```bash
-sudo apt-get install -y imagemagick
-```
+`PRINTER_NAME = "petroprinter"` matches the queue name above and is set in
+`server/app.py`. The app currently prints **single-sided** (`DUPLEX = False`).
+The duplex path (combine the sheet with `BACK-COVER.png` into a two-page PDF via
+ImageMagick) is disabled because the TS7451a drops ink density on duplex. To
+re-enable it, set `DUPLEX = True`, uncomment `Duplex=` in `PRINT_OPTIONS`, and
+install ImageMagick: `sudo apt-get install -y imagemagick`.
 
 **Tray options:** `media-source=auto` (printer chooses), `main` (front cassette),
 `rear` (rear tray). Exhibit setup uses `rear`.
@@ -161,35 +189,27 @@ the Pi to the internet (e.g. `netplan-wlan0-The Internet`); `wifi-switch.sh
 maintenance` brings that one up. Adjust the name in `wifi-switch.sh` if yours
 differs.
 
-#### 3. Allow Flask to trigger network switches (sudoers, run once)
+#### 3. Allow Flask to trigger network switches (sudoers)
 
-The in-app maintenance shortcut calls `wifi-switch.sh` via sudo:
+`pi-setup.sh` installs this rule (`/etc/sudoers.d/020-petro-wifi`) so the in-app
+maintenance shortcut can run `wifi-switch.sh` via sudo. Recreate by hand only if
+needed:
 
 ```bash
 echo 'olifrost ALL=(root) NOPASSWD: /home/olifrost/meet-petro/scripts/wifi-switch.sh' \
   | sudo tee /etc/sudoers.d/020-petro-wifi
 sudo chmod 0440 /etc/sudoers.d/020-petro-wifi
-sudo chmod +x /home/olifrost/meet-petro/scripts/wifi-switch.sh
 ```
 
-#### 4. Test printing on the direct network
+#### 4. Switch to the printer network and test
 
 ```bash
-# Connect to the printer's AP
-sudo nmcli con up printer-direct
-
-# Discover the printer's IP on this network (usually 192.168.0.1 for Canon)
-avahi-browse -rpt _ipp._tcp | grep -i canon
-
-# Update CUPS to use the new IP
-sudo lpadmin -x petroprinter
-sudo lpadmin -p petroprinter -E \
-  -v ipp://192.168.115.1:631/ipp/print \
-  -m everywhere
-lpstat -p    # confirm "petroprinter" idle
+# Connect to the printer's AP — this also (re)creates the CUPS queue for it.
+sudo ~/meet-petro/scripts/wifi-switch.sh printer
+lpstat -p                # confirm "petroprinter" is idle
 
 # Test print
-lp -d petroprinter -o PageSize=A5 -o InputSlot=Rear \
+lp -d petroprinter -o PageSize=A5 -o InputSlot=Rear -o ColorModel=Gray \
   ~/meet-petro/dist/printouts/WIFE.png
 ```
 
@@ -266,8 +286,8 @@ no-op if the panel isn't found. **Note:** this only runs under systemd — a man
       circular panel under `?app`
 - [x] Panel comes up at 1080×1080 (else apply the KMS modeline above)
 - [x] Keyboard arrows + Enter drive the flow; touch works (chevrons/taps/swipes)
-- [x] Printing works end-to-end: Canon TS7451a on WiFi, A5, greyscale, duplex,
-      rear tray; back cover (BACK-COVER.png) printed on reverse of every sheet
+- [x] Printing works end-to-end: Canon TS7451a, A5, greyscale, rear tray,
+      single-sided (duplex disabled — see Printer section)
 - [x] Print fires during "Now we're cooking!" loader; success screen delayed
       22 s (thinking animation) to allow time for the physical print to emerge
 
