@@ -602,10 +602,11 @@ function firePrint(audienceLabel: string, emotionLabel: string): Promise<void> {
 }
 
 // Web demo only: resolve the pre-generated Decept artwork for this combo.
-// The app page lives at /app/, the printouts at the site root.
+// Resolve from import.meta.url (always in assets/) so the path works whether
+// App is embedded in the product page or the standalone /app/ page.
 async function resolveDecept(audienceLabel: string, emotionLabel: string): Promise<string | null> {
   const { audience, emotion } = comboIds(audienceLabel, emotionLabel)
-  const base = new URL('../printouts/', document.baseURI)
+  const base = new URL('../printouts/', import.meta.url)
   try {
     const matrix = await fetch(new URL('matrix.json', base)).then((r) => r.json())
     const file = matrix[`${audience}.${emotion}`] ?? matrix.default
