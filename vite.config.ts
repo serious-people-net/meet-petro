@@ -16,6 +16,7 @@ export default defineConfig({
       input: {
         site: r('index.html'),
         app: r('app/index.html'),
+        display: r('display/index.html'),
       },
     },
   },

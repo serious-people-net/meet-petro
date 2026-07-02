@@ -1,0 +1,95 @@
+/* ============================================================
+   PETRO EXHIBIT DISPLAY — TV slideshow (16:9)
+   Petro left, text right, inside a 16:9 Mac-II window (title inside,
+   as on the site) that fills the TV. Reuses product-page tokens.
+   ============================================================ */
+
+*, *::before, *::after { cursor: none !important; box-sizing: border-box; }
+
+:root {
+  --accent: #c2541c;
+  --page:   #e8e9ec;
+  --card:   #f4f5f7;
+  --line:   rgba(44,48,56,.13);
+}
+
+html, body { height: 100%; margin: 0; overflow: hidden; }
+#root { height: 100%; }
+
+.display {
+  position: fixed; inset: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--body);
+  font-weight: 300;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* the window mirrors the TV: 16:9, filling the screen with a small inset */
+.d-stage {
+  width: min(94vw, 163vh);
+  display: flex; align-items: center; justify-content: center;
+}
+.d-slide { width: 100%; }
+.accent { color: var(--accent); }
+
+/* ---- Mac window chrome (scaled up for TV) ---- */
+.mac-window {
+  aspect-ratio: 16 / 9;
+  display: flex; flex-direction: column;
+  background: var(--card); border: 0.3vh solid var(--ink-70); border-radius: 1.3vh;
+  box-shadow: 0 0.8vh 0 rgba(44,48,56,.14);
+  overflow: hidden;
+}
+.mac-titlebar {
+  display: flex; align-items: center; gap: 1.8vh;
+  padding: 1.6vh 2.4vh; border-bottom: 0.3vh solid var(--ink-70);
+  background: #fbfbfc;
+}
+.mac-stripes {
+  flex: 1 1 auto; height: 1.8vh;
+  background: repeating-linear-gradient(180deg,
+    var(--ink-40) 0 0.26vh, transparent 0.26vh 0.6vh);
+}
+.mac-close {
+  width: 1.9vh; height: 1.9vh; border: 0.3vh solid var(--ink-70);
+  background: var(--card); flex: 0 0 auto;
+}
+.mac-title {
+  font-family: var(--mono); font-size: 1.9vh; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--ink-70); white-space: nowrap;
+}
+
+/* ---- slide body: Petro left, text right ---- */
+.mac-body {
+  flex: 1 1 auto;
+  display: grid; grid-template-columns: 0.82fr 1.18fr;
+  align-items: center; gap: 4vh;
+  padding: 5vh 7vh;
+}
+.d-petro-wrap {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%;
+  animation: d-bob 2.8s ease-in-out infinite;
+}
+.d-petro {
+  max-width: 100%; max-height: 54vh; width: auto; height: auto; object-fit: contain;
+}
+/* these two sit small inside a padded canvas — scale them up to match */
+.d-petro.is-printing { transform: scale(1.24); }
+.d-petro.is-artist   { transform: scale(1.32); }
+
+@keyframes d-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.3vh); }
+}
+
+.d-text h2 {
+  font-family: var(--display); font-weight: 800;
+  font-size: 6.6vh; line-height: 1.03; letter-spacing: -0.025em;
+  margin: 0; text-wrap: balance;
+}
+.d-text p {
+  font-size: 3.6vh; line-height: 1.36; color: var(--ink-70);
+  margin: 3.4vh 0 0; max-width: 28ch; text-wrap: pretty;
+}
