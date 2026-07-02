@@ -29,7 +29,7 @@ type Slide = {
 const SLIDES: Slide[] = [
   {
     window: 'Petro.app',
-    title: <><span className="accent">Deceipt. Delay Deception.</span> Petro makes it fun&nbsp;and&nbsp;easy</>,
+    title: <><span className="accent">Denial. Delay. Deception.</span> Petro makes it fun&nbsp;and&nbsp;easy</>,
     body: 'Petro is an automated oil and gas marketer that helps your clients keep on drilling.',
     img: oilcanUrl,
   },
@@ -47,13 +47,13 @@ const SLIDES: Slide[] = [
     imgClass: 'is-artist',
   },
   {
-    window: 'CONTROLS.SIT',
+    window: 'EMOTIONS.EXE',
     title: <>Target <span className="accent">easy</span> audiences</>,
     body: 'Simply choose the audience and emotion you want to manipulate. Petro handles the psyops.',
     rotate: [mumUrl, workerUrl, gothUrl],
   },
   {
-    window: 'OUTPUT.DECEIPT',
+    window: 'OUTPUT.TREES',
     title: <>Say bye to <span className="accent">paperless</span></>,
     body: 'Petro prints his creations onto deluxe 300gsm card. No tree spared.',
     img: printingUrl,

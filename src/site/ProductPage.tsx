@@ -37,7 +37,7 @@ const FEATURES = [
   },
   {
     icon: Printer,
-    file: "OUTPUT.DECEIPT",
+    file: "OUTPUT.TREES",
     title: "Say bye to paperless",
     body: "Petro prints his creations onto deluxe 300gsm card. No tree spared.",
   },
@@ -80,7 +80,7 @@ export default function ProductPage() {
           <header className="hero">
             <p className="eyebrow">[ Meet Petro ]</p>
             <h1>
-              <span className="accent">Deceipt. Delay Deception.</span> Petro makes it fun and easy
+              <span className="accent">Denial. Delay. Deception.</span> Petro makes it fun and easy
             </h1>
             <p className="hero-sub">
               Petro is an automated oil and gas marketer that helps your clients keep on drilling.
