@@ -1,0 +1,51 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e6]: Petro
+    - generic [ref=e7]:
+      - link "RSVP" [ref=e8] [cursor=pointer]:
+        - /url: "#invite"
+      - button "TRY THE DEMO" [ref=e9] [cursor=pointer]
+  - banner [ref=e10]:
+    - paragraph [ref=e11]: "[ Meet Petro ]"
+    - heading "Denial. Delay. Deception. Petro makes it fun and easy" [level=1] [ref=e12]
+    - paragraph [ref=e13]: Petro is an automated oil and gas marketer that helps your clients keep on drilling.
+    - img "Petro" [ref=e14]
+    - button "Meet Petro" [ref=e16] [cursor=pointer]:
+      - text: Meet Petro
+      - img [ref=e17]
+  - generic [ref=e20]:
+    - generic [ref=e24]: Petro.app
+    - generic [ref=e26]:
+      - heading "Take the science out of \"conscience\"" [level=2] [ref=e27]
+      - paragraph [ref=e28]: Tired of staff walkouts and “moral objections”? Petro never wavers, never doubts, and never asks to see the science.
+  - generic [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e34]: TRAINING_DATA.TXT
+      - generic [ref=e36]:
+        - img [ref=e37]
+        - heading "Trained on the classics" [level=3] [ref=e40]
+        - paragraph [ref=e41]: Trained on decades of deception by Advertising and PR firms, Petro learns from the best.
+    - generic [ref=e42]:
+      - generic [ref=e46]: CONTROLS.SIT
+      - generic [ref=e48]:
+        - img [ref=e49]
+        - heading "Target easy audiences" [level=3] [ref=e50]
+        - paragraph [ref=e51]: Simply choose the audience and emotion you want to manipulate. Petro handles the psyops.
+    - generic [ref=e52]:
+      - generic [ref=e56]: OUTPUT.TREES
+      - generic [ref=e58]:
+        - img [ref=e59]
+        - heading "Say bye to paperless" [level=3] [ref=e63]
+        - paragraph [ref=e64]: Petro prints his creations onto deluxe 300gsm card. No tree spared.
+  - generic [ref=e65]:
+    - paragraph [ref=e66]: "[ Demo day ]"
+    - heading "See the future of fossil fuel marketing for yourself." [level=2] [ref=e67]
+    - paragraph [ref=e68]: Come to our Demo Day on July 9 at Second Home, London.
+    - link "RSVP" [ref=e69] [cursor=pointer]:
+      - /url: "#"
+      - text: RSVP
+      - img [ref=e70]
+  - contentinfo [ref=e72]:
+    - text: Made by
+    - link "Serious People" [ref=e73] [cursor=pointer]:
+      - /url: https://seriouspeople.co

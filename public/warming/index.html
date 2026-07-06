@@ -143,8 +143,11 @@ body.autoplay #intro .icue{ visibility:hidden; }
 <script>
   /* Exhibit config — locked (was the tweaks panel). Autoplay loop for the TV.
      Each segment dwells for a reading-time based on its word count; `speed`
-     scales all of them (2 = twice as fast, 0.5 = half). */
-  window.__warmCfg = { autoplay: true, speed: 1 };
+     scales all of them (2 = twice as fast, 0.5 = half).
+     showIntro: false hides the "How we trained Petro" opening card and
+     showEndcap: false hides the "+1.5°C" closing card, so the loop stays
+     focused on the chart itself - flip either back to true to restore it. */
+  window.__warmCfg = { autoplay: true, speed: 1, showIntro: false, showEndcap: false };
 </script>
 <script src="heating-data.js"></script>
 <script src="warming-chart.js"></script>

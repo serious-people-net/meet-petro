@@ -52,8 +52,17 @@ window.HEATING = (function () {
 
   /* ---- story events (agencies / lobbying vs the heating curve) ----
      Kept in ascending `anchor` order so the camera pans forward in time.
-     Max 8 events (the footnote superscripts run ¹–⁸). ---- */
+     The footnote superscripts (SUP in warming-chart.js) must have at
+     least as many entries as there are events here. ---- */
   const events = [
+    {
+      id: 'house-committee', anchor: 1965, span: null, slot: 'tl',
+      kicker: '1960s', short: '1960s',
+      win: [1850, 1994],
+      title: 'Known and buried',
+      body: 'Internal documents show fossil fuel companies understood by this decade that burning fossil fuels causes climate change - and spent decades working to bury it from public understanding.',
+      source: 'House Oversight / Senate Budget Committee staff report, 2024'
+    },
     {
       id: 'exxon-memo', anchor: 1982, span: null, slot: 'tl',
       kicker: '1982', short: '1982',
@@ -95,6 +104,14 @@ window.HEATING = (function () {
       source: 'Fossil Free Politics / Corporate Europe Observatory, 2024'
     },
     {
+      id: 'cop28', anchor: 2023.92, span: null, slot: 'tr',
+      kicker: '2023', short: '2023',
+      win: [2015, 2026.5],
+      title: 'A seat at the table',
+      body: 'A record 2,456 fossil fuel lobbyists are granted access to the Cop28 climate talks in Dubai - nearly four times the number let in the previous year.',
+      source: 'The Guardian, 2023'
+    },
+    {
       id: 'total-rebrand', anchor: 2024, span: null, slot: 'tl',
       kicker: '2024', short: '2024',
       win: [2016, 2026.6],
@@ -109,6 +126,14 @@ window.HEATING = (function () {
       title: '4% of capital',
       body: 'The head of the International Energy Agency notes that oil and gas companies were allocating only about 4% of capital expenditure to clean energy.',
       source: 'International Energy Agency, 2024'
+    },
+    {
+      id: 'un-ad-ban', anchor: 2024.42, span: null, slot: 'tl',
+      kicker: '2024', short: '2024',
+      win: [2016.5, 2026.8],
+      title: 'Godfathers of climate chaos',
+      body: 'UN Secretary-General António Guterres calls for a ban on fossil fuel advertising, comparing coal, oil and gas companies to a tobacco industry once allowed to advertise despite the harm it caused.',
+      source: 'BBC News, 2024'
     },
     {
       id: 'nature', anchor: 2025, span: null, slot: 'tl',

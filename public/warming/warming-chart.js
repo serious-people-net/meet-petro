@@ -12,8 +12,8 @@
   const M = { l: 150, r: 150, t: 170, b: 130 };
   const W = 1920, HT = 1080;
   const IW = W - M.l - M.r, IH = HT - M.t - M.b;
-  const SUP = ['¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸'];
-  const CARD_SLOT = [150, 205];
+  const SUP = ['¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹', '¹⁰', '¹¹', '¹²'];
+  const CARD_SLOT = [240, 205];
   const FULL = { x0: 1849, x1: 2027, y0: -0.38, y1: 1.78 };
   const NS = 'http://www.w3.org/2000/svg';
 
@@ -51,6 +51,16 @@
   const pbar = document.getElementById('pbar');
 
   scrolly.style.height = (SEGS * 140) + 'vh';
+
+  // full-screen fade used to hide the scroll-position reset at the end of
+  // the autoplay loop, so it reads as a crossfade rather than a hard cut
+  const loopFade = document.createElement('div');
+  loopFade.id = 'loopfade';
+  Object.assign(loopFade.style, {
+    position: 'fixed', inset: '0', background: 'var(--screen)',
+    opacity: '0', pointerEvents: 'none', transition: 'opacity .7s ease', zIndex: '50'
+  });
+  document.body.appendChild(loopFade);
 
   // defs: gradient + soft glow
   const defs = el('defs', {}, svg);
@@ -116,10 +126,15 @@
      text it carries, so long cards aren't gone before they can be read. */
   const wc = s => (String(s).trim().match(/\S+/g) || []).length;
   const secsFor = (w, base, per, lo, hi) => Math.max(lo, Math.min(hi, base + w * per));
+  const cfg0 = window.__warmCfg || {};
+  const showIntro = cfg0.showIntro !== false;
+  const showEndcap = cfg0.showEndcap !== false;
+  // with the intro/endcap copy hidden there's no text to read, so don't
+  // hold autoplay on an empty frame - clear it quickly instead
   const segDur = [
-    secsFor(wc(intro.textContent), 6, 0.30, 9, 16),                       // intro
+    showIntro ? secsFor(wc(intro.textContent), 6, 0.30, 9, 16) : 1.2,     // intro
     ...E.map(ev => secsFor(wc(ev.title + ' ' + ev.body), 4, 0.45, 8, 18)),// events
-    secsFor(wc(endcap.textContent), 7, 0.30, 10, 15)                      // endcap
+    showEndcap ? secsFor(wc(endcap.textContent), 7, 0.30, 10, 15) : 1.2   // endcap
   ];
 
   /* ---------- frame scaling (cover) ---------- */
@@ -282,20 +297,24 @@
       tipDot.setAttribute('cx', px); tipDot.setAttribute('cy', py);
       tipHalo.setAttribute('cx', px); tipHalo.setAttribute('cy', py);
       tipHalo.setAttribute('r', 13 + Math.sin(now / 380) * 3.5);
-      // label sits to the right of the point (line/leader always approach
-      // from the lower-left in this locked view), so text never crosses them
-      tipLab.setAttribute('text-anchor', 'start');
-      tipLab.setAttribute('x', clamp(px + 34, M.l + 20, W - M.r - 180));
+      // label sits to the right of the point by default (line/leader always
+      // approach from the lower-left in this locked view, so text doesn't
+      // cross them) - but once the dot nears the right edge there's no room
+      // to its right, so flip the label to the left instead of clamping it
+      // into an overlap with the dot.
+      const fitsRight = px + 34 <= W - M.r - 8;
+      tipLab.setAttribute('text-anchor', fitsRight ? 'start' : 'end');
+      tipLab.setAttribute('x', fitsRight ? px + 34 : px - 34);
       tipLab.setAttribute('y', py + 6);
       tipLab.textContent = Math.floor(drawYear) + ' · ' + fmtT(tTip);
       gTip.style.display = '';
     } else gTip.style.display = 'none';
 
     /* overlays */
-    const introA = seg === 0 ? 1 - ss(0.55, 0.95, u) : 0;
+    const introA = (seg === 0 && showIntro) ? 1 - ss(0.55, 0.95, u) : 0;
     intro.style.opacity = introA;
     intro.style.visibility = introA > 0.01 ? 'visible' : 'hidden';
-    const endA = seg === SEGS - 1 ? ss(0.5, 0.8, u) : 0;
+    const endA = (seg === SEGS - 1 && showEndcap) ? ss(0.5, 0.8, u) : 0;
     endcap.style.opacity = endA;
     endcap.style.visibility = endA > 0.01 ? 'visible' : 'hidden';
     header.style.opacity = clamp((g - 0.8) / 0.4, 0, 1) * (1 - endA * 0.65);
@@ -318,7 +337,18 @@
     const seg = clamp(Math.floor(apPos / segScroll), 0, SEGS - 1);
     const speed = segScroll / segDur[seg] * (cfg.speed || 1);
     apPos += speed * dt;
-    if (apPos >= max) { apPos = max; apHoldUntil = now + 4500 + 1; window.scrollTo(0, max); setTimeout(() => { apPos = 0; window.scrollTo(0, 0); }, 4500); return; }
+    if (apPos >= max) {
+      apPos = max; window.scrollTo(0, max);
+      const HOLD = 4500, FADE = 650;
+      apHoldUntil = now + HOLD + FADE + 60;
+      setTimeout(() => { loopFade.style.opacity = '1'; }, HOLD);
+      setTimeout(() => {
+        apPos = 0; window.scrollTo(0, 0);
+        // wait a frame so the reset scroll paints before fading back in
+        requestAnimationFrame(() => requestAnimationFrame(() => { loopFade.style.opacity = '0'; }));
+      }, HOLD + FADE);
+      return;
+    }
     window.scrollTo(0, apPos);
   }
   // user interaction pauses autoplay briefly

@@ -1,0 +1,16 @@
+- generic [ref=f2e4]:
+  - img "Global surface temperature increase above pre-industrial, 1850 to 2025" [ref=f2e5]:
+    - generic [ref=f2e6]:
+      - generic [ref=f2e7]: 0.0°
+      - generic [ref=f2e8]: +0.5°
+      - generic [ref=f2e9]: +1.0°
+      - generic [ref=f2e10]: +1.5°
+      - generic [ref=f2e11]: "1850"
+      - generic [ref=f2e12]: "1900"
+      - generic [ref=f2e13]: "1950"
+      - generic [ref=f2e14]: "2000"
+      - generic [ref=f2e15]: "2025"
+      - generic [ref=f2e16]: 1850–1900 average
+  - banner:
+    - generic: "[ Global temperature rise ]"
+    - generic: Above pre-industrial average
