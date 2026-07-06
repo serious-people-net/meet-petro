@@ -13,25 +13,18 @@
   const W = 1920, HT = 1080;
   const IW = W - M.l - M.r, IH = HT - M.t - M.b;
   const SUP = ['¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸'];
-  const SLOT = { tl: [150, 205], tr: [1210, 205], bl: [150, 555], br: [1210, 530] };
+  const CARD_SLOT = [150, 205];
   const FULL = { x0: 1849, x1: 2027, y0: -0.38, y1: 1.78 };
   const NS = 'http://www.w3.org/2000/svg';
 
-  /* ---------- camera rest positions per segment ---------- */
-  function yWindow(x0, x1) {
-    let lo = 99, hi = -99;
-    for (const [y, t] of H.data) {
-      if (y >= x0 - 0.5 && y <= x1 + 0.5) { lo = Math.min(lo, t); hi = Math.max(hi, t); }
-    }
-    let r = Math.max(0.5, hi - lo);
-    return { y0: lo - r * 0.35, y1: hi + r * 0.22 };
-  }
-  const rest = [FULL];
-  for (const ev of E) {
-    const yw = yWindow(ev.win[0], ev.win[1]);
-    rest.push({ x0: ev.win[0], x1: ev.win[1], y0: yw.y0, y1: yw.y1 });
-  }
-  rest.push(FULL);
+  /* ---------- camera: locked full-frame view ----------
+     Every segment shares the same fully-zoomed-out window, so the long
+     climb always reads as one steep rise and a bad year is only ever a
+     small dip against it. (Per-event y-rescaling made dips look like
+     crashes and flattened the trend.) Only the drawn line and the tip
+     advance; the card floats off to the left and points at the tip. */
+  const rest = [];
+  for (let i = 0; i < SEGS; i++) rest.push(FULL);
   const restYear = [1850, ...E.map(e => e.anchor), 2025];
 
   /* ---------- helpers ---------- */
@@ -104,8 +97,9 @@
     const c = document.createElement('div');
     c.className = 'card';
     c.setAttribute('data-screen-label', 'Event ' + (i + 1) + ' — ' + ev.title);
-    const [x, y] = SLOT[ev.slot];
-    c.style.left = x + 'px'; c.style.top = y + 'px';
+    // Locked full-frame view keeps the line low-left→high-right, so the
+    // upper-left stays clear: park every card there and point at the tip.
+    c.style.left = CARD_SLOT[0] + 'px'; c.style.top = CARD_SLOT[1] + 'px';
     c.innerHTML =
       '<div class="bigyear">' + ev.short + '</div>' +
       '<div class="kicker"><span class="kdate">' + ev.kicker + '</span><span class="ksample"> · SAMPLE 0' + (i + 1) + '</span></div>' +
@@ -243,14 +237,9 @@
       c.style.visibility = alpha > 0.01 ? 'visible' : 'hidden';
       if (alpha > activeAlpha) { activeAlpha = alpha; activeIdx = i; }
 
-      // marker
-      const revealed = drawYear >= ev.anchor - 0.05;
-      const mk = marks[i];
-      if (revealed) {
-        const mx = P.x(ev.anchor), my = P.y(H.tempAt(ev.anchor));
-        mk.setAttribute('cx', mx); mk.setAttribute('cy', my);
-        mk.style.display = (mx > M.l - 20 && mx < W - M.r + 20) ? '' : 'none';
-      } else mk.style.display = 'none';
+      // per-event dots stay hidden: the late events overlap in the locked
+      // view, so the pulsing tip is the single pointer instead.
+      marks[i].style.display = 'none';
 
       // span rect
       if (ev.span) {
