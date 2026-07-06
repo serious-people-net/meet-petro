@@ -17,14 +17,28 @@ set -uo pipefail
 VID=0712   # WaveShare touch panel USB vendor:product (see `lsusb`)
 PID=000a
 
-# The re-attach must be the *last* thing that touches the cursor, otherwise it is
-# undone. So wait for cage AND chromium, then let chromium finish loading — it
-# does its own initial pointer/cursor setup as it starts, and a replug fired
-# before that just gets overwritten (this is why a +4s boot-time replug failed but
-# a manual one on a settled session stuck).
-for _ in $(seq 1 60); do pgrep -x cage      >/dev/null 2>&1 && break; sleep 0.5; done
-for _ in $(seq 1 60); do pgrep -f chromium  >/dev/null 2>&1 && break; sleep 0.5; done
-sleep 6   # let chromium finish its initial load + cursor setup
+# How this hides the cursor: cage draws its own compositor cursor at screen
+# centre on startup and keeps drawing it until Chromium takes over the pointer
+# cursor — which Chromium does as `cursor: none` (set in index.css), but ONLY on
+# a pointer *enter* event that arrives AFTER the page has painted. A software
+# replug of a USB input device generates exactly that enter event. So the replug
+# must land *after* Chromium has finished its first paint, or Chromium's own
+# initial cursor setup overwrites it and cage keeps showing the arrow.
+#
+# The old script fired a single replug ~6s after Chromium's process appeared.
+# That was enough on a warm restart (Chromium paints almost instantly) but on a
+# COLD boot Chromium is still initialising for ~10–15s, so the replug fired
+# before first paint and was wasted — the cursor stayed visible. Fix: wait for
+# the app to actually be served, then fire several replugs spread across the
+# whole paint window so at least one reliably lands after first paint.
+for _ in $(seq 1 120); do pgrep -x cage     >/dev/null 2>&1 && break; sleep 0.5; done
+for _ in $(seq 1 120); do pgrep -f chromium >/dev/null 2>&1 && break; sleep 0.5; done
+# Wait until the kiosk page is actually being served (Chromium has something to
+# paint). This is the real readiness signal, not a fixed sleep.
+for _ in $(seq 1 60); do
+  curl -fsS "http://localhost:8080/app/" >/dev/null 2>&1 && break
+  sleep 0.5
+done
 
 # Resolve the panel by vendor:product — the USB port path (e.g. 1-1) can change.
 dev=""
@@ -40,13 +54,16 @@ if [ -z "$dev" ] || [ ! -w "$dev/authorized" ]; then
   exit 0
 fi
 
-# Replug, then replug once more after a short gap, so the re-attach is reliably
-# the final cursor event even if chromium sets the cursor again late.
-replug() { echo 0 > "$dev/authorized"; sleep 1; echo 1 > "$dev/authorized"; }
-echo "hide-cursor-replug: software-replugging $dev to hide cursor (pass 1)"
-replug
-sleep 4
-echo "hide-cursor-replug: software-replugging $dev to hide cursor (pass 2)"
-replug
+# A quick unplug/replug. Kept short (0.3s down) so touch is barely interrupted.
+replug() { echo 0 > "$dev/authorized"; sleep 0.3; echo 1 > "$dev/authorized"; }
+
+# Fire repeatedly across Chromium's cold-boot paint window (~8s → ~45s after the
+# page is first served). Cheap insurance: whichever pass lands just after first
+# paint is the one that sticks, and later passes are harmless no-ops.
+for delay in 8 8 10 12; do
+  sleep "$delay"
+  echo "hide-cursor-replug: software-replugging $dev to hide cursor"
+  replug
+done
 echo "hide-cursor-replug: done"
 exit 0
