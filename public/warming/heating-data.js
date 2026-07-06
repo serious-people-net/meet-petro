@@ -75,7 +75,7 @@ window.HEATING = (function () {
       kicker: '2009', short: '2009',
       win: [1988, 2026],
       title: 'Rent-a-crowd',
-      body: 'The American Petroleum Institute leads a coalition called “Energy Citizens” — a grassroots-styled campaign, staged with employees bussed to rallies, to block the American Clean Energy and Security Act of 2009.',
+      body: 'The American Petroleum Institute leads a coalition called “Energy Citizens” - a grassroots-styled campaign, staged with employees bussed to rallies, to block the American Clean Energy and Security Act of 2009.',
       source: 'American Petroleum Institute, 2009'
     },
     {
@@ -91,7 +91,7 @@ window.HEATING = (function () {
       kicker: 'Dec 2019 – May 2024', short: '2019–24',
       win: [2012, 2026.5],
       title: '1,000 meetings in Brussels',
-      body: 'Shell, TotalEnergies, Eni, Equinor, ExxonMobil, BP and Chevron — with a network of over 50 organisations and a lobbying budget close to €64m — attend more than 1,000 meetings with the European Commission.',
+      body: 'Shell, TotalEnergies, Eni, Equinor, ExxonMobil, BP and Chevron - with a network of over 50 organisations and a lobbying budget close to €64m - attend more than 1,000 meetings with the European Commission.',
       source: 'Fossil Free Politics / Corporate Europe Observatory, 2024'
     },
     {
@@ -115,7 +115,7 @@ window.HEATING = (function () {
       kicker: '2025', short: '2025',
       win: [2019, 2026.8],
       title: 'The transition that isn’t',
-      body: 'An analysis in Nature of the energy assets of 250 of the largest oil and gas companies finds renewables are a tiny proportion of their total energy production — a marginal contribution to global renewable deployment.',
+      body: 'An analysis in Nature of the energy assets of 250 of the largest oil and gas companies finds renewables are a tiny proportion of their total energy production - a marginal contribution to global renewable deployment.',
       source: 'Nature, 2025'
     }
   ];

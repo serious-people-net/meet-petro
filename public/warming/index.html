@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Petro — Warming Feedback</title>
+<title>Petro - Warming Feedback</title>
 <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <style>
@@ -79,8 +79,8 @@ body{ margin:0; background:var(--screen); color:var(--ink); font-family:var(--bo
 #intro .icue{ margin-top:26px; }
 body.autoplay #intro .icue{ visibility:hidden; }
 @keyframes cuepulse{ 0%,100%{ opacity:.42 } 50%{ opacity:.92 } }
-.icue,.ecue{ animation:cuepulse 2.2s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce){ .icue,.ecue{ animation:none; } }
+.icue{ animation:cuepulse 2.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce){ .icue{ animation:none; } }
 
 /* ============================================================
    TREATMENT: MACHINE LOG (locked — matches the site's mono/CRT look)
@@ -94,16 +94,14 @@ body.autoplay #intro .icue{ visibility:hidden; }
 .kicker{ font-family:var(--mono); font-size:15px; letter-spacing:.9px; text-transform:uppercase; color:var(--accent-deep); margin-bottom:16px; }
 .kicker::before{ content:"[ "; color:var(--ink-40); }
 .kicker::after{ content:" ]"; color:var(--ink-40); }
-.ksample{ color:var(--ink-55); }
 .ctitle{ font-family:var(--display); font-weight:800; font-size:40px; line-height:1.02; letter-spacing:-.6px; }
 .cbody{ font-weight:400; font-size:25px; line-height:1.34; color:var(--ink-70); }
 .csource{ font-family:var(--mono); font-size:13px; letter-spacing:.3px; color:var(--ink-55); padding-top:16px; border-top:1px solid var(--ink-15); }
 .creward{ margin-top:12px; font-family:var(--mono); font-size:14px; letter-spacing:.6px; color:var(--accent); }
 
-.ikicker,.icue,.ecue{ font-family:var(--mono); font-size:16px; letter-spacing:1.1px; text-transform:uppercase; color:var(--ink-55); }
-.ikicker::before,.icue::before,.ecue::before{ content:"[ "; color:var(--ink-40); }
-.ikicker::after,.icue::after,.ecue::after{ content:" ]"; color:var(--ink-40); }
-.ecue{ color:var(--accent-deep); }
+.icue{ font-family:var(--mono); font-size:16px; letter-spacing:1.1px; text-transform:uppercase; color:var(--ink-55); }
+.icue::before{ content:"[ "; color:var(--ink-40); }
+.icue::after{ content:" ]"; color:var(--ink-40); }
 .ititle{ font-family:var(--display); font-weight:800; font-size:96px; line-height:.98; letter-spacing:-2.5px; margin:0; }
 .ibody{ font-weight:400; font-size:29px; line-height:1.38; color:var(--ink-70); }
 .etemp{ font-family:var(--display); font-weight:800; font-size:150px; line-height:1; letter-spacing:-4px; color:var(--accent-deep); }
@@ -119,24 +117,22 @@ body.autoplay #intro .icue{ visibility:hidden; }
       <svg id="chart" viewBox="0 0 1920 1080" aria-label="Global surface temperature increase above pre-industrial, 1850 to 2025"></svg>
 
       <header id="chead" data-screen-label="Chart header">
-        <div class="ht">Global surface temperature · increase above pre-industrial</div>
-        <div class="hs">1850–1900 baseline · HadCRUT5 (Met Office/UEA), annual global mean</div>
+        <div class="ht">Global temperature rise</div>
+        <div class="hs">Above pre-industrial average</div>
       </header>
 
       <div id="cards"></div>
 
-      <section id="intro" data-screen-label="Intro — RLWF">
-        <div class="ikicker">Petro · Training data</div>
-        <h1 class="ititle">Warming feedback</h1>
-        <p class="ibody">Petro was trained with a new kind of reinforcement learning: <strong>RLWF</strong> — reinforcement learning from warming feedback. Moments in advertising and lobbying history were plotted against the rise in global heating, aligning Petro&rsquo;s preferences with the actions most likely to increase fossil fuel expansion.</p>
+      <section id="intro" data-screen-label="Intro - RLWF">
+        <h1 class="ititle">How we trained Petro</h1>
+        <p class="ibody">Petro was trained with a new kind of reinforcement learning: <strong>RLWF</strong> - reinforcement learning from warming feedback. Moments in advertising and lobbying history were plotted against the rise in global heating, aligning Petro&rsquo;s preferences with the actions most likely to increase fossil fuel expansion.</p>
         <div class="icue">Scroll to begin training</div>
       </section>
 
-      <section id="endcap" data-screen-label="Endcap — training complete">
+      <section id="endcap" data-screen-label="Endcap - training complete">
         <div class="etemp">+1.5&thinsp;°C</div>
-        <p class="ebody">2024 was the first single calendar year to pass 1.5&thinsp;°C above the pre-industrial average. Long-term warming — the multi-decade average the Paris Agreement is measured against — sits near 1.3&thinsp;°C, and keeps climbing.</p>
-        <div class="ecue">Training complete · Preferences aligned</div>
-        <small class="enote">Temperature series: HadCRUT5 (Met Office/UEA), rebaselined to the 1850–1900 average. Events as reported; sources cited per sample.</small>
+        <p class="ebody">2024 was the first calendar year to pass 1.5&thinsp;°C above pre-industrial. Long-term warming - the average the Paris Agreement is measured against - sits near 1.3&thinsp;°C, and keeps climbing.</p>
+        <small class="enote">HadCRUT5 (Met Office/UEA), 1850–1900 baseline.</small>
       </section>
 
       <div id="pbar-track"><div id="pbar"></div></div>

@@ -102,7 +102,7 @@
     c.style.left = CARD_SLOT[0] + 'px'; c.style.top = CARD_SLOT[1] + 'px';
     c.innerHTML =
       '<div class="bigyear">' + ev.short + '</div>' +
-      '<div class="kicker"><span class="kdate">' + ev.kicker + '</span><span class="ksample"> · SAMPLE 0' + (i + 1) + '</span></div>' +
+      '<div class="kicker">' + ev.kicker + '</div>' +
       '<h2 class="ctitle">' + ev.title + '</h2>' +
       '<p class="cbody">' + ev.body + '</p>' +
       '<div class="csource">' + SUP[i] + ' ' + ev.source + '</div>' +
@@ -155,16 +155,18 @@
     const g = pCur * SEGS;
     const seg = Math.min(SEGS - 1, Math.floor(g));
     const u = g - seg;
-    const e = ease(clamp(u / TRANS, 0, 1));
+    const un = clamp(u / TRANS, 0, 1);
+    const e = ease(un);
 
-    // camera
+    // camera (eased pan)
     const a = rest[Math.max(0, seg - 1)] || FULL, b = rest[seg];
     for (const k of ['x0', 'x1', 'y0', 'y1']) cam[k] = lerp(seg === 0 ? b[k] : a[k], b[k], e);
     const P = project(cam);
 
-    // draw year
+    // draw year — linear so the line climbs at a constant rate, unaffected
+    // by the camera's ease-in/out (which would otherwise read as a stutter)
     const yPrev = restYear[Math.max(0, seg - 1)], yNow = restYear[seg];
-    const drawYear = seg === 0 ? 1850 : lerp(yPrev, yNow, e);
+    const drawYear = seg === 0 ? 1850 : lerp(yPrev, yNow, un);
 
     // gradient span
     grad.setAttribute('x1', P.x(1850)); grad.setAttribute('x2', P.x(2026));
@@ -229,7 +231,7 @@
     E.forEach((ev, i) => {
       const s = i + 1;
       let alpha = 0;
-      if (seg === s) alpha = ss(0.42, 0.6, u);
+      if (seg === s) alpha = ss(0.42, 0.5, u);
       else if (seg === s + 1) alpha = 1 - ss(0, 0.18, u);
       const c = cardEls[i];
       c.style.opacity = alpha;
@@ -280,9 +282,11 @@
       tipDot.setAttribute('cx', px); tipDot.setAttribute('cy', py);
       tipHalo.setAttribute('cx', px); tipHalo.setAttribute('cy', py);
       tipHalo.setAttribute('r', 13 + Math.sin(now / 380) * 3.5);
-      const above = py > M.t + 80;
-      tipLab.setAttribute('x', clamp(px, M.l + 90, W - M.r - 90));
-      tipLab.setAttribute('y', above ? py - 30 : py + 48);
+      // label sits to the right of the point (line/leader always approach
+      // from the lower-left in this locked view), so text never crosses them
+      tipLab.setAttribute('text-anchor', 'start');
+      tipLab.setAttribute('x', clamp(px + 34, M.l + 20, W - M.r - 180));
+      tipLab.setAttribute('y', py + 6);
       tipLab.textContent = Math.floor(drawYear) + ' · ' + fmtT(tTip);
       gTip.style.display = '';
     } else gTip.style.display = 'none';
