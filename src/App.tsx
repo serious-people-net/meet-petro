@@ -370,8 +370,8 @@ function BlobScreen({ dur, onDone }: { dur: number; onDone: () => void }) {
 
 /* ---- admin panel ---------------------------------------------------- */
 type NetworkInfo = { ip: string | null; ssid: string | null }
-type AdminAction = 'switch' | 'restart' | 'kill'
-const ADMIN_ACTIONS: AdminAction[] = ['switch', 'restart', 'kill']
+type AdminAction = 'switch' | 'restart' | 'kill' | 'shutdown'
+const ADMIN_ACTIONS: AdminAction[] = ['switch', 'restart', 'kill', 'shutdown']
 
 function AdminPanel({ onClose }: { onClose: () => void }) {
   const [net, setNet] = useState<NetworkInfo>({ ip: null, ssid: null })
@@ -428,9 +428,16 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
     // kiosk dies — display goes dark, shell is waiting
   }, [])
 
+  const doShutdown = useCallback(() => {
+    if (msgRef.current) return
+    setMsg('Shutting down…')
+    fetch('/api/admin/shutdown', { method: 'POST' }).catch(() => {})
+    // Pi powers off — display goes dark for good; wait ~10s before pulling power
+  }, [])
+
   const HANDLERS: Record<AdminAction, () => void> = useMemo(
-    () => ({ switch: doSwitch, restart: doRestart, kill: doKill }),
-    [doSwitch, doRestart, doKill]
+    () => ({ switch: doSwitch, restart: doRestart, kill: doKill, shutdown: doShutdown }),
+    [doSwitch, doRestart, doKill, doShutdown]
   )
   const handlersRef = useRef(HANDLERS)
   useEffect(() => { handlersRef.current = HANDLERS }, [HANDLERS])
@@ -443,7 +450,7 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
       if (e.key === 'ArrowUp')   { e.preventDefault(); setSel(s => Math.max(0, s - 1)); return }
       if (e.key === 'ArrowDown') { e.preventDefault(); setSel(s => Math.min(ADMIN_ACTIONS.length - 1, s + 1)); return }
       if (e.key === 'Enter')     { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[selRef.current]](); return }
-      const idx = ['1','2','3'].indexOf(e.key)
+      const idx = ['1','2','3','4'].indexOf(e.key)
       if (idx !== -1) { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[idx]]() }
     }
     window.addEventListener('keydown', onKey)
@@ -512,6 +519,7 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
             {btn(0, switchLabel)}
             {btn(1, 'Restart kiosk')}
             {btn(2, 'Kill kiosk → shell', true)}
+            {btn(3, 'Shut down Pi', true)}
           </div>
         )}
 

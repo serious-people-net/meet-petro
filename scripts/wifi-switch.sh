@@ -30,8 +30,11 @@ case "$MODE" in
   restart)
     systemctl restart petro-kiosk 2>/dev/null || (pkill -TERM cage 2>/dev/null; sleep 1; systemctl start petro-kiosk 2>/dev/null || true)
     ;;
+  shutdown)
+    systemctl poweroff
+    ;;
   *)
-    echo "Usage: $0 printer|maintenance|stop|restart" >&2
+    echo "Usage: $0 printer|maintenance|stop|restart|shutdown" >&2
     exit 1
     ;;
 esac

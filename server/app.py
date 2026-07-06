@@ -104,6 +104,15 @@ def admin_restart():
     return jsonify({'ok': True})
 
 
+@app.post('/api/admin/shutdown')
+def admin_shutdown():
+    if not WIFI_SWITCH.exists():
+        return jsonify({'ok': False, 'error': 'wifi-switch.sh not found'}), 501
+    subprocess.Popen(['sudo', str(WIFI_SWITCH), 'shutdown'],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return jsonify({'ok': True})
+
+
 def load_matrix() -> dict:
     with open(PRINTOUTS / "matrix.json") as f:
         return json.load(f)
