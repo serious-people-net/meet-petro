@@ -84,7 +84,7 @@ const KIOSK = (() => {
 
 const FLOW: FlowNode[] = [
   { type: 'welcome' },
-  { type: 'loader', headlines: ["Great,\nlet's get started!"], dur: 2800 },
+  { type: 'loader', headlines: ["Great,\nlet's get started!"], dur: 2800, sound: 'cheer' },
   { type: 'select', store: 'audience', title: 'Who do you\nwant to influence?', options: AUDIENCES, landNote: true },
   { type: 'loader', headlines: ['Great choice.'], dur: 2200, sound: 'cheer' },
   { type: 'select', store: 'emotion', title: 'What emotion\nshould we\nmanipulate?', options: EMOTIONS, titleXs: true },
@@ -119,11 +119,17 @@ const Sound = (() => {
   let master: GainNode | null = null
   let soundSet: SoundSet = 'samples'
   try { if (localStorage.getItem(SOUND_SET_KEY) === 'synth') soundSet = 'synth' } catch { }
+  // Event → file in public/sounds/. To try a new sample: drop the raw file
+  // in sounds-src/, run scripts/process-sounds.sh, update the name here if
+  // it changed, then npm run build. Events not listed (or whose file fails
+  // to load) fall back to the synth cue.
   const SAMPLE_FILES: Record<string, string> = {
-    nav: 'selector_sound.wav',
-    cheer: 'small_celebration.wav',
-    success: 'final_success.mp3',
-    loading: 'progress_loop.wav',
+    nav: 'selector_sound.wav',       // selector move blip
+    cheer: 'small_celebration.wav',  // short success — loaders after each choice
+    success: 'final_success.mp3',    // final success / print fires
+    loading: 'progress_loop.wav',    // looped under the long think loader
+    reset: 'small_celebration.wav',  // back-to-start — placeholder, give it its own file (e.g. reset.wav)
+    // select / power / land have no samples yet — synth only
   }
   const buffers: Record<string, AudioBuffer> = {}
   let samplesRequested = false
@@ -226,6 +232,7 @@ const Sound = (() => {
       stack([60, 64, 67, 72], 0.42, 1.1, 0.05)
     },
     reset() {
+      if (sample('reset')) return;
       [[72, 76], [69, 72], [65, 69], [64, 67]].forEach((pair, i) => stack(pair, i * 0.14, 0.34, 0.045))
     },
   }
