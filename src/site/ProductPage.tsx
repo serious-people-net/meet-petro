@@ -1,4 +1,4 @@
-import { ArrowRight, Megaphone, SlidersHorizontal, Printer } from 'lucide-react'
+import { ArrowRight, Megaphone, SlidersHorizontal, Flame } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import App from '../App'
 import oilcanUrl from '../assets/mascots/OILY.png'
@@ -36,10 +36,10 @@ const FEATURES = [
     body: "Simply choose the audience and emotion you want to manipulate. Petro handles the psyops.",
   },
   {
-    icon: Printer,
-    file: "OUTPUT.TREES",
-    title: "Say bye to paperless",
-    body: "Petro prints his creations onto deluxe 300gsm card. No tree spared.",
+    icon: Flame,
+    file: "HEATWAVE.SYS",
+    title: "Never feels the heat",
+    body: "In heatwaves where normal workers would struggle, Petro gets on with the job of making things hotter.",
   },
 ]
 

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import oilcanUrl from '../assets/mascots/OILY.png'
 import thumbsUrl from '../assets/mascots/OILY-THUMBS-UP.png'
 import artistUrl from '../assets/mascots/OILY-ARTIST-LARGE.png'
-import printingUrl from '../assets/mascots/OILY-PRINTING-LARGE.png'
 
 /* audience mascots — three distinct characters + emotions, cycled on
    the "target easy audiences" slide */
@@ -53,11 +52,10 @@ const SLIDES: Slide[] = [
     rotate: [mumUrl, workerUrl, gothUrl],
   },
   {
-    window: 'OUTPUT.TREES',
-    title: <>Say bye to <span className="accent">paperless</span></>,
-    body: 'Petro prints his creations onto deluxe 300gsm card. No tree spared.',
-    img: printingUrl,
-    imgClass: 'is-printing',
+    window: 'HEATWAVE.SYS',
+    title: <>Never feels the <span className="accent">heat</span></>,
+    body: 'In heatwaves where normal workers would struggle, Petro gets on with the job of making things hotter.',
+    img: oilcanUrl,
   },
 ]
 
