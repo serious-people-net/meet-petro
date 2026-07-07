@@ -184,10 +184,17 @@ PRINTER_SSID="DIRECT-xxxx-TS7451a" PRINTER_PSK="..." \
   sudo -E ~/meet-petro/scripts/install-printer-wifi.sh
 ```
 
-The maintenance/venue network is whatever NetworkManager profile already connects
-the Pi to the internet (e.g. `netplan-wlan0-The Internet`); `wifi-switch.sh
+The "maintenance" network is whatever NetworkManager profile already connects
+the Pi to the internet — in practice Oli's home WiFi (`netplan-wlan0-The
+Internet`), not something available at the venue itself. `wifi-switch.sh
 maintenance` brings that one up. Adjust the name in `wifi-switch.sh` if yours
 differs.
+
+At the venue there is no such WiFi network; reach the Pi instead via the
+printer's WiFi Direct AP (above) or, more simply, an Ethernet cable straight
+into the Pi — a `netplan-eth0` profile is already set up to auto-connect, and
+it works alongside the printer WiFi Direct connection on wlan0 without any
+switching. See `CLAUDE.md` for full SSH-access details.
 
 #### 3. Allow Flask to trigger network switches (sudoers)
 
