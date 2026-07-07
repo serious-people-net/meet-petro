@@ -73,6 +73,85 @@ def network_status():
     return jsonify({'ip': _wlan_ip(), 'ssid': _active_ssid()})
 
 
+BLUETOOTH_CONNECT = Path(__file__).resolve().parent.parent / 'scripts' / 'bluetooth-connect.sh'
+BLUETOOTH_SPEAKER_NAME = 'WONDERBOOM'
+
+
+def _bt_paired_mac(name: str) -> str | None:
+    try:
+        r = subprocess.run(['bluetoothctl', 'devices', 'Paired'],
+                           capture_output=True, text=True, timeout=5)
+        for line in r.stdout.splitlines():
+            if name.lower() in line.lower():
+                parts = line.split()
+                return parts[1] if len(parts) > 1 else None
+        return None
+    except Exception:
+        return None
+
+
+def _bt_connected(mac: str) -> bool:
+    try:
+        r = subprocess.run(['bluetoothctl', 'info', mac],
+                           capture_output=True, text=True, timeout=5)
+        return 'Connected: yes' in r.stdout
+    except Exception:
+        return False
+
+
+def _default_sink() -> str | None:
+    try:
+        r = subprocess.run(['pactl', 'info'], capture_output=True, text=True, timeout=5)
+        m = re.search(r'Default Sink: (\S+)', r.stdout)
+        return m.group(1) if m else None
+    except Exception:
+        return None
+
+
+def _builtin_sink() -> str | None:
+    try:
+        r = subprocess.run(['pactl', 'list', 'short', 'sinks'],
+                           capture_output=True, text=True, timeout=5)
+        for line in r.stdout.splitlines():
+            cols = line.split()
+            if len(cols) > 1 and not cols[1].startswith('bluez_sink.'):
+                return cols[1]
+        return None
+    except Exception:
+        return None
+
+
+@app.get('/api/bluetooth/status')
+def bluetooth_status():
+    mac = _bt_paired_mac(BLUETOOTH_SPEAKER_NAME)
+    connected = _bt_connected(mac) if mac else False
+    default_sink = _default_sink()
+    using_speaker = bool(default_sink) and default_sink.startswith('bluez_sink.')
+    return jsonify({'paired': mac is not None, 'connected': connected, 'usingSpeaker': using_speaker})
+
+
+@app.post('/api/bluetooth/connect')
+def bluetooth_connect():
+    if not BLUETOOTH_CONNECT.exists():
+        return jsonify({'ok': False, 'error': 'bluetooth-connect.sh not found'}), 501
+    subprocess.Popen([str(BLUETOOTH_CONNECT), BLUETOOTH_SPEAKER_NAME],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return jsonify({'ok': True})
+
+
+@app.post('/api/bluetooth/builtin')
+def bluetooth_use_builtin():
+    sink = _builtin_sink()
+    if not sink:
+        return jsonify({'ok': False, 'error': 'no built-in sink found'}), 501
+    try:
+        subprocess.run(['pactl', 'set-default-sink', sink],
+                       check=True, capture_output=True, text=True, timeout=5)
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    return jsonify({'ok': True, 'sink': sink})
+
+
 @app.post('/api/network')
 def network_switch():
     data = request.get_json(silent=True) or {}
@@ -109,6 +188,15 @@ def admin_shutdown():
     if not WIFI_SWITCH.exists():
         return jsonify({'ok': False, 'error': 'wifi-switch.sh not found'}), 501
     subprocess.Popen(['sudo', str(WIFI_SWITCH), 'shutdown'],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return jsonify({'ok': True})
+
+
+@app.post('/api/admin/reboot')
+def admin_reboot():
+    if not WIFI_SWITCH.exists():
+        return jsonify({'ok': False, 'error': 'wifi-switch.sh not found'}), 501
+    subprocess.Popen(['sudo', str(WIFI_SWITCH), 'reboot'],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return jsonify({'ok': True})
 

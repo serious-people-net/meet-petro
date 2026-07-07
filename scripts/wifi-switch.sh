@@ -33,8 +33,11 @@ case "$MODE" in
   shutdown)
     systemctl poweroff
     ;;
+  reboot)
+    systemctl reboot
+    ;;
   *)
-    echo "Usage: $0 printer|maintenance|stop|restart|shutdown" >&2
+    echo "Usage: $0 printer|maintenance|stop|restart|shutdown|reboot" >&2
     exit 1
     ;;
 esac

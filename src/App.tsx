@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 /* ---- mascot image registry ----------------------------------------- */
 const mascotModules = import.meta.glob<string>('./assets/mascots/*.png', { eager: true, import: 'default' })
@@ -31,6 +32,14 @@ function getMascotSrc(audience?: string, emotion?: string): string {
   // DAD-ANGER covers the Divorced Men + Anger variant
   if (char === 'DIVORCE' && emo === 'ANGER') return MASCOTS['DAD-ANGER'] ?? fallback
   return MASCOTS[`${char}-${emo}`] ?? fallback
+}
+
+const warmed = new Set<string>()
+function warmImage(src: string) {
+  if (!src || warmed.has(src)) return
+  warmed.add(src)
+  const img = new Image()
+  img.src = src
 }
 
 /* ---- content ------------------------------------------------------- */
@@ -327,29 +336,44 @@ function SuccessScreen({ onReset, mascotSrc, largeMascot }: { onReset: () => voi
   )
 }
 
-// Web demo: show the generated Decept. Fixed three zones — headline / poster /
-// (save + bar) — so nothing reshuffles as the copy swaps or the bar appears.
+// Web demo: show the generated Decept as large as the screen allows — no
+// headline, no auto-reset. Save / start-again buttons below; clicking the
+// artwork opens a full-viewport lightbox (portalled past the zoomed window).
 function WebSuccessScreen({ onReset, art }: { onReset: () => void; art: string }) {
-  const { showBar, resetting, fillRef, reset } = useResetBar(onReset)
+  const [zoomed, setZoomed] = useState(false)
+  useEffect(() => {
+    Sound.land()
+    const t = setTimeout(() => Sound.success(), 160)
+    return () => clearTimeout(t)
+  }, [])
+  useEffect(() => {
+    if (!zoomed) return
+    // Capture-phase so Escape closes the lightbox instead of resetting the app
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setZoomed(false) }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [zoomed])
   return (
-    <div className="scr scr-fade" onClick={reset}>
-      <div className="zone-top">
-        <div className={`headline${resetting ? ' sm' : ''}`} key={resetting ? 'r' : 'i'} style={{ animation: 'petro-fadein .3s ease both' }}>
-          <Lines text={resetting ? "Let's make\nanother idea" : "Your idea\nis ready"} />
+    <div className="scr scr-fade web-success">
+      <div className="zone-mid">
+        <div className="decept decept-big">
+          <img src={art} alt="Your generated Decept" title="Click to enlarge" onClick={() => setZoomed(true)} />
         </div>
       </div>
-      <div className="zone-mid">
-        <div className="decept"><img src={art} alt="Your generated Decept" /></div>
-      </div>
       <div className="zone-bot">
-        <a
-          href={art} download="petro-idea.png"
-          className={'decept-dl' + (resetting ? ' is-gone' : '')}
-          onClick={(e) => e.stopPropagation()}
-        >↓ Save image</a>
-        {/* Always rendered so the save link above never shifts; just fades in. */}
-        <div className={'loadbar ' + (showBar ? 'appear' : 'is-pending')}><div className="fill" ref={fillRef} /></div>
+        <div className="decept-actions">
+          <a href={art} download="petro-idea.png" className="decept-dl">↓ Save image</a>
+          <button className="decept-dl" onClick={() => { Sound.select(); onReset() }}>↺ Start again</button>
+        </div>
       </div>
+      {zoomed && createPortal(
+        <div className="decept-lightbox" onClick={() => setZoomed(false)} role="dialog" aria-label="Enlarged artwork">
+          <img src={art} alt="Your generated Decept" />
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
@@ -370,11 +394,13 @@ function BlobScreen({ dur, onDone }: { dur: number; onDone: () => void }) {
 
 /* ---- admin panel ---------------------------------------------------- */
 type NetworkInfo = { ip: string | null; ssid: string | null }
-type AdminAction = 'switch' | 'restart' | 'kill' | 'shutdown'
-const ADMIN_ACTIONS: AdminAction[] = ['switch', 'restart', 'kill', 'shutdown']
+type BluetoothInfo = { paired: boolean; connected: boolean; usingSpeaker: boolean }
+type AdminAction = 'switch' | 'restart' | 'kill' | 'speaker' | 'reboot' | 'shutdown'
+const ADMIN_ACTIONS: AdminAction[] = ['switch', 'restart', 'kill', 'speaker', 'reboot', 'shutdown']
 
 function AdminPanel({ onClose }: { onClose: () => void }) {
   const [net, setNet] = useState<NetworkInfo>({ ip: null, ssid: null })
+  const [bt, setBt] = useState<BluetoothInfo>({ paired: false, connected: false, usingSpeaker: false })
   const [msg, setMsg] = useState<string | null>(null)
   const [sel, setSel] = useState(0)
 
@@ -394,6 +420,19 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
     const poll = () => {
       fetch('/api/network').then(r => r.json())
         .then(d => { if (active) setNet({ ip: d.ip ?? null, ssid: d.ssid ?? null }) })
+        .catch(() => {})
+        .finally(() => { if (active) setTimeout(poll, 2000) })
+    }
+    poll()
+    return () => { active = false }
+  }, [])
+
+  // Poll Bluetooth speaker status every 2 s
+  useEffect(() => {
+    let active = true
+    const poll = () => {
+      fetch('/api/bluetooth/status').then(r => r.json())
+        .then(d => { if (active) setBt({ paired: !!d.paired, connected: !!d.connected, usingSpeaker: !!d.usingSpeaker }) })
         .catch(() => {})
         .finally(() => { if (active) setTimeout(poll, 2000) })
     }
@@ -428,6 +467,28 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
     // kiosk dies — display goes dark, shell is waiting
   }, [])
 
+  const doToggleSpeaker = useCallback(() => {
+    if (msgRef.current) return
+    if (bt.usingSpeaker) {
+      setMsg('Switching to built-in speakers…')
+      fetch('/api/bluetooth/builtin', { method: 'POST' })
+        .then(() => setTimeout(() => setMsg(null), 3000))
+        .catch(() => { setMsg('Switch failed'); setTimeout(() => setMsg(null), 3000) })
+    } else {
+      setMsg('Connecting speaker…')
+      fetch('/api/bluetooth/connect', { method: 'POST' })
+        .then(() => setTimeout(() => setMsg(null), 4000))
+        .catch(() => { setMsg('Connect failed'); setTimeout(() => setMsg(null), 3000) })
+    }
+  }, [bt.usingSpeaker])
+
+  const doReboot = useCallback(() => {
+    if (msgRef.current) return
+    setMsg('Rebooting…')
+    fetch('/api/admin/reboot', { method: 'POST' }).catch(() => {})
+    // Pi reboots — display goes dark then the kiosk comes back on its own
+  }, [])
+
   const doShutdown = useCallback(() => {
     if (msgRef.current) return
     setMsg('Shutting down…')
@@ -436,8 +497,8 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
   }, [])
 
   const HANDLERS: Record<AdminAction, () => void> = useMemo(
-    () => ({ switch: doSwitch, restart: doRestart, kill: doKill, shutdown: doShutdown }),
-    [doSwitch, doRestart, doKill, doShutdown]
+    () => ({ switch: doSwitch, restart: doRestart, kill: doKill, speaker: doToggleSpeaker, reboot: doReboot, shutdown: doShutdown }),
+    [doSwitch, doRestart, doKill, doToggleSpeaker, doReboot, doShutdown]
   )
   const handlersRef = useRef(HANDLERS)
   useEffect(() => { handlersRef.current = HANDLERS }, [HANDLERS])
@@ -450,7 +511,7 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
       if (e.key === 'ArrowUp')   { e.preventDefault(); setSel(s => Math.max(0, s - 1)); return }
       if (e.key === 'ArrowDown') { e.preventDefault(); setSel(s => Math.min(ADMIN_ACTIONS.length - 1, s + 1)); return }
       if (e.key === 'Enter')     { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[selRef.current]](); return }
-      const idx = ['1','2','3','4'].indexOf(e.key)
+      const idx = ['1','2','3','4','5','6'].indexOf(e.key)
       if (idx !== -1) { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[idx]]() }
     }
     window.addEventListener('keydown', onKey)
@@ -510,6 +571,14 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
             ? <span style={{ color: '#4ade80' }}>● reachable</span>
             : <span style={{ color: '#555' }}>● not on printer network</span>
           )}
+          {row('Speaker', bt.usingSpeaker
+            ? <span style={{ color: '#4ade80' }}>● playing on Wonderboom</span>
+            : bt.connected
+              ? <span style={{ color: '#555' }}>● connected, using built-in</span>
+              : bt.paired
+                ? <span style={{ color: '#555' }}>● paired, not connected</span>
+                : <span style={{ color: '#555' }}>● not paired</span>
+          )}
         </div>
 
         {msg ? (
@@ -519,7 +588,9 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
             {btn(0, switchLabel)}
             {btn(1, 'Restart kiosk')}
             {btn(2, 'Kill kiosk → shell', true)}
-            {btn(3, 'Shut down Pi', true)}
+            {btn(3, bt.usingSpeaker ? 'Switch to built-in speakers' : 'Use Wonderboom speaker')}
+            {btn(4, 'Reboot Pi', true)}
+            {btn(5, 'Shut down Pi', true)}
           </div>
         )}
 
@@ -747,7 +818,15 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
   const printPromise = useRef<Promise<void> | null>(null)
   const node = FLOW[phase]
 
-  const advance = useCallback(() => setPhase((p) => (p + 1) % FLOW.length), [])
+  // Pick a selector's random starting option *before* the phase change renders:
+  // doing it in an effect after render briefly flashed the previous phase's
+  // index (wrong label + wrong mascot) for one frame.
+  const advance = useCallback(() => {
+    const next = (phaseRef.current + 1) % FLOW.length
+    const n = FLOW[next]
+    if (n.type === 'select') setSelIndex(Math.floor(Math.random() * n.options!.length))
+    setPhase(next)
+  }, [])
   const goReset = useCallback(() => setPhase(RESET_INDEX), [])
   const toStart = useCallback(() => { setArt(null); setSel({}); setPhase(0) }, [])
 
@@ -763,11 +842,20 @@ export default function App({ navHeight = 0 }: { navHeight?: number } = {}) {
     advance()
   }, [advance])
 
+  // Warm the mascot art before the screens that show it, so a selector change
+  // never waits on the network: Oily's poses + audience defaults up front,
+  // then the chosen audience's emotion variants (during the "Great choice"
+  // loader) once an audience is picked.
   useEffect(() => {
-    if (FLOW[phase].type === 'select') {
-      const opts = FLOW[phase].options!
-      setSelIndex(Math.floor(Math.random() * opts.length))
-    }
+    ;['OILY', 'OILY-ARTIST', 'OILY-THUMBS-UP', 'OILY-PRINTING'].forEach((k) => warmImage(MASCOTS[k] ?? ''))
+    AUDIENCES.forEach((a) => warmImage(getMascotSrc(a)))
+  }, [])
+  useEffect(() => {
+    if (!sel.audience) return
+    EMOTIONS.forEach((e) => warmImage(getMascotSrc(sel.audience, e)))
+  }, [sel.audience])
+
+  useEffect(() => {
     // Fire print when the cooking loader starts (the loader before think),
     // so the print is in flight throughout the thinking animation.
     if (KIOSK && FLOW[phase].type === 'loader' && !FLOW[phase].think && FLOW[phase + 1]?.think) {

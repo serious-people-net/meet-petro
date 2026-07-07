@@ -18,6 +18,8 @@ Environment=LIBSEAT_BACKEND=seatd
 # /run/petro-kiosk owned by the service user and cleans it up on stop.
 RuntimeDirectory=petro-kiosk
 Environment=XDG_RUNTIME_DIR=/run/petro-kiosk
+# PULSE_SERVER (for audio incl. Bluetooth speaker output) is set in
+# pi-kiosk.sh, not here — see the comment there for why.
 ExecStart=__REPO__/scripts/pi-kiosk.sh
 # After cage is up, software-replug the WaveShare panel to hide the startup
 # cursor. `+` runs it as root (needed for sysfs) despite User= above; `-` makes

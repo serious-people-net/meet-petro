@@ -26,7 +26,10 @@ sudo apt update
 # avahi-utils: avahi-browse, used to discover the printer on the Direct AP
 # seatd:     seat manager so cage can reach the GPU/input (libseat fallback)
 # git/curl:  fetch + build the app
-sudo apt install -y cage chromium python3-flask cups avahi-utils git curl seatd
+# pulseaudio(-module-bluetooth): audio server chromium plays through; the
+#   bluetooth module is what lets a paired speaker show up as a sink
+sudo apt install -y cage chromium python3-flask cups avahi-utils git curl seatd \
+  pulseaudio pulseaudio-module-bluetooth
 
 echo "-- Node 22 (NodeSource) --"
 if ! command -v node >/dev/null 2>&1 || [ "$(node -v | sed 's/v\([0-9]*\).*/\1/')" -lt 22 ]; then
@@ -42,6 +45,15 @@ SEAT_GROUP="$(getent group _seatd >/dev/null && echo _seatd || echo seat)"
 sudo usermod -aG "$SEAT_GROUP" "$USER_NAME" || true
 # video/render/input are usually already granted on Pi OS; ensure anyway.
 sudo usermod -aG video,render,input "$USER_NAME" || true
+
+echo "-- per-user PulseAudio (for audio incl. Bluetooth speaker output) --"
+# petro-kiosk.service has no login session, so PulseAudio's normal per-session
+# autostart never fires. `enable-linger` keeps a user@ instance (and its
+# pulseaudio --user unit) running from boot regardless, at /run/user/<uid>.
+sudo loginctl enable-linger "$USER_NAME"
+UID_NUM="$(id -u "$USER_NAME")"
+sudo -u "$USER_NAME" XDG_RUNTIME_DIR="/run/user/$UID_NUM" \
+  systemctl --user enable --now pulseaudio.socket pulseaudio.service
 
 echo "-- repo at $REPO --"
 if [ -d "$REPO/.git" ]; then

@@ -11,6 +11,13 @@ URL="http://localhost:${PORT}/app/?app"
 # cage/Wayland needs a writable runtime dir for its socket; the service's login
 # session sets this, but fall back sensibly for manual runs.
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+# Audio (incl. Bluetooth speaker output) goes through the per-user PulseAudio
+# instance kept alive via `loginctl enable-linger` (see pi-setup.sh), which
+# lives under this user's own /run/user/<uid> — not the cage/chromium
+# XDG_RUNTIME_DIR above (that's a systemd-managed dir with no pulse socket in
+# it). Computed here rather than via systemd's %U specifier, which resolved to
+# 0 (root) instead of this service's User=, silently breaking the socket path.
+export PULSE_SERVER="${PULSE_SERVER:-unix:/run/user/$(id -u)/pulse/native}"
 
 cd "$REPO"
 

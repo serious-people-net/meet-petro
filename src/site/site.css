@@ -6,6 +6,8 @@
 /* restore cursor for the product page / web demo */
 *, *::before, *::after { cursor: auto !important; }
 a, button, [role=button], label, select { cursor: pointer !important; }
+.decept-big img { cursor: zoom-in !important; }
+.decept-lightbox, .decept-lightbox img { cursor: zoom-out !important; }
 
 :root {
   --accent: #c2541c; /* burnt orange — remove by pointing this at var(--ink) */
@@ -28,7 +30,7 @@ body {
 a {
 text-decoration: none; color: var(--accent); transition: color .15s; }
 
-.site { max-width: 1020px; margin: 0 auto; padding: 0 28px 90px; }
+.site { max-width: 1020px; margin: 0 auto; padding: 0 28px 0; }
 
 .site .eyebrow {
   font-family: var(--mono); font-size: 12px; letter-spacing: 2px;
@@ -175,9 +177,55 @@ text-decoration: none; color: var(--accent); transition: color .15s; }
 }
 .invite-sub { font-size: 19px; color: var(--ink-70); max-width: 440px; margin: 22px auto 32px; text-wrap: balance; }
 
+/* ---- take-action band (full bleed, inverted) ---- */
+.actions {
+  margin: 48px calc(50% - 50vw) 0;
+  background: var(--ink);
+  color: #f4f5f7;
+}
+.actions-inner {
+  max-width: 680px; margin: 0 auto;
+  padding: 84px 28px 92px;
+  text-align: center;
+}
+.actions .actions-eyebrow { color: var(--accent); margin-bottom: 18px; }
+.actions h2 {
+  font-family: var(--display); font-weight: 800;
+  font-size: clamp(28px, 4.4vw, 42px); line-height: 1.02; letter-spacing: -1px;
+  margin: 0 auto 44px; max-width: 16ch; text-wrap: balance;
+  color: #fff;
+}
+.actions-list {
+  border: 1.5px solid rgba(244,245,247,.35); border-radius: 8px;
+  overflow: hidden; text-align: left;
+}
+.action-row {
+  display: flex; align-items: center; gap: 18px;
+  padding: 20px 24px;
+  color: #f4f5f7;
+  transition: background .15s;
+}
+.action-row + .action-row { border-top: 1.5px solid rgba(244,245,247,.35); }
+.action-row:hover { background: rgba(244,245,247,.07); color: #f4f5f7; }
+.action-numeral {
+  font-family: var(--mono); font-size: 13px; letter-spacing: 1px;
+  color: var(--accent); min-width: 30px; flex: 0 0 auto;
+}
+.action-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.action-title {
+  font-family: var(--display); font-weight: 700;
+  font-size: 19px; letter-spacing: -.3px; line-height: 1.15;
+}
+.action-sub { font-size: 15px; color: rgba(244,245,247,.6); }
+.action-arrow {
+  width: 18px; height: 18px; margin-left: auto; flex: 0 0 auto;
+  color: rgba(244,245,247,.55); transition: transform .15s, color .15s;
+}
+.action-row:hover .action-arrow { color: var(--accent); transform: translateX(4px); }
+
 /* ---- footer ---- */
 .site-footer {
-  margin-top: 110px; padding-top: 26px; border-top: 1px solid var(--line);
+  margin-top: 60px; padding-top: 26px; border-top: 1px solid var(--line);
   display: flex; align-items: center; justify-content: center; gap: 14px;
   font-family: var(--mono); font-size: 11px; letter-spacing: 1.6px;
   text-transform: uppercase; color: var(--ink-55);

@@ -43,6 +43,27 @@ const FEATURES = [
   },
 ]
 
+const ACTIONS = [
+  {
+    numeral: 'I',
+    title: 'Write to your MP',
+    sub: 'Demand a ban on fossil fuel advertising',
+    href: 'https://actionnetwork.org/letters/write-to-your-mp-ban-high-carbon-ads',
+  },
+  {
+    numeral: 'II',
+    title: 'Sign the Clean Creatives pledge',
+    sub: 'For agencies and creatives who refuse fossil fuel clients',
+    href: 'https://cleancreatives.org/firms',
+  },
+  {
+    numeral: 'III',
+    title: 'Break the fossil fuel influence',
+    sub: 'A pledge for health organisations',
+    href: 'https://climateandhealthalliance.org/what-we-do/mobilise-the-movement/break-the-fossil-influence-campaign/',
+  },
+]
+
 export default function ProductPage() {
   const [showDemo, setShowDemo] = useState(false)
   const navRef = useRef<HTMLElement>(null)
@@ -118,7 +139,9 @@ export default function ProductPage() {
               <p className="eyebrow">[ Demo day ]</p>
               <h2>See the future of fossil fuel marketing for yourself.</h2>
               <p className="invite-sub">Come to our Demo Day on July 9 at Second Home, London.</p>
-              <a className="btn" href="#">RSVP <ArrowRight aria-hidden="true" /></a>
+              <a className="btn" href="https://luma.com/9pa57v60" target="_blank" rel="noopener noreferrer">
+                RSVP <ArrowRight aria-hidden="true" />
+              </a>
             </section>
           )}
 
@@ -127,6 +150,26 @@ export default function ProductPage() {
             Made by <a href="https://seriouspeople.co" target="_blank" rel="noopener noreferrer">Serious People
             </a>
           </footer>
+
+          <section className="actions" aria-label="Take action">
+            <div className="actions-inner">
+              <p className="eyebrow actions-eyebrow">[ Protest Petro ]</p>
+              <h2>Want to make it less hot?</h2>
+              <div className="actions-list">
+                {ACTIONS.map(({ numeral, title, sub, href }) => (
+                  <a key={numeral} className="action-row" href={href} target="_blank" rel="noopener noreferrer">
+                    <span className="action-numeral">{numeral}.</span>
+                    <span className="action-text">
+                      <span className="action-title">{title}</span>
+                      <span className="action-sub">{sub}</span>
+                    </span>
+                    <ArrowRight className="action-arrow" aria-hidden="true" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </section>
+
         </>
       )}
 
