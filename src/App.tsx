@@ -117,19 +117,26 @@ const SOUND_SET_KEY = 'petro-sound-set'
 const Sound = (() => {
   let ctx: AudioContext | null = null
   let master: GainNode | null = null
-  let soundSet: SoundSet = 'samples'
-  try { if (localStorage.getItem(SOUND_SET_KEY) === 'synth') soundSet = 'synth' } catch { }
-  // Event → file in public/sounds/. To try a new sample: drop the raw file
-  // in sounds-src/, run scripts/process-sounds.sh, update the name here if
-  // it changed, then npm run build. Events not listed (or whose file fails
-  // to load) fall back to the synth cue.
+  // Kiosk defaults to the loud sample set; the web demo keeps the synth set.
+  // The admin-panel toggle persists and overrides either default.
+  let soundSet: SoundSet = KIOSK ? 'samples' : 'synth'
+  try {
+    const stored = localStorage.getItem(SOUND_SET_KEY)
+    if (stored === 'synth' || stored === 'samples') soundSet = stored
+  } catch { }
+  // Event → file in public/sounds/. Every event is listed: put a filename to
+  // play that sample, leave it '' to keep the original synth cue. To try a
+  // new sample: drop the raw file in sounds-src/, run
+  // scripts/process-sounds.sh, set its name here, then npm run build.
   const SAMPLE_FILES: Record<string, string> = {
     nav: 'selector_sound.wav',       // selector move blip
-    cheer: 'small_celebration.wav',  // short success — loaders after each choice
+    select: '',                      // confirm click on a selector
+    power: 'startup.mp3',            // power-on chime, welcome screen
+    land: '',                        // soft landing tone
+    cheer: 'small_celebration.wav',  // short success — loaders after each choice, incl. the first
+    loading: 'progress_loop.wav',    // looped under the long "thinking" loader
     success: 'final_success.mp3',    // final success / print fires
-    loading: 'progress_loop.wav',    // looped under the long think loader
-    reset: 'small_celebration.wav',  // back-to-start — placeholder, give it its own file (e.g. reset.wav)
-    // select / power / land have no samples yet — synth only
+    reset: 'small_celebration.wav',  // back-to-start reset
   }
   const buffers: Record<string, AudioBuffer> = {}
   let samplesRequested = false
@@ -142,6 +149,7 @@ const Sound = (() => {
       ? new URL('/sounds/', window.location.origin)
       : new URL('../sounds/', import.meta.url)
     for (const [name, file] of Object.entries(SAMPLE_FILES)) {
+      if (!file) continue
       fetch(new URL(file, base))
         .then((r) => r.arrayBuffer())
         .then((b) => c.decodeAudioData(b))
@@ -215,9 +223,9 @@ const Sound = (() => {
       try { localStorage.setItem(SOUND_SET_KEY, s) } catch { }
     },
     nav() { if (sample('nav')) return; noise(0.022, 0.04, 3400); tone(86, 0, 0.05, 0.04, 'sine') },
-    select() { noise(0.04, 0.05, 1800); tone(67, 0, 0.08, 0.06); tone(71, 0.055, 0.1, 0.05) },
-    power() { [60, 64, 67, 72].forEach((n, i) => tone(n, i * 0.075, 0.55, 0.055)) },
-    land() { tone(60, 0, 0.5, 0.06, 'sine') },
+    select() { if (sample('select')) return; noise(0.04, 0.05, 1800); tone(67, 0, 0.08, 0.06); tone(71, 0.055, 0.1, 0.05) },
+    power() { if (sample('power')) return; [60, 64, 67, 72].forEach((n, i) => tone(n, i * 0.075, 0.55, 0.055)) },
+    land() { if (sample('land')) return; tone(60, 0, 0.5, 0.06, 'sine') },
     cheer() { if (sample('cheer')) return; tone(72, 0, 0.12, 0.05, 'triangle'); tone(76, 0.1, 0.2, 0.04, 'triangle') },
     loading(dur: number) {
       if (sample('loading', dur)) return
@@ -492,7 +500,7 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
     const poll = () => {
       fetch('/api/network').then(r => r.json())
         .then(d => { if (active) setNet({ ip: d.ip ?? null, ssid: d.ssid ?? null }) })
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => { if (active) setTimeout(poll, 2000) })
     }
     poll()
@@ -505,7 +513,7 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
     const poll = () => {
       fetch('/api/bluetooth/status').then(r => r.json())
         .then(d => { if (active) setBt({ paired: !!d.paired, connected: !!d.connected, usingSpeaker: !!d.usingSpeaker }) })
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => { if (active) setTimeout(poll, 2000) })
     }
     poll()
@@ -528,14 +536,14 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
   const doRestart = useCallback(() => {
     if (msgRef.current) return
     setMsg('Restarting…')
-    fetch('/api/admin/restart', { method: 'POST' }).catch(() => {})
+    fetch('/api/admin/restart', { method: 'POST' }).catch(() => { })
     // kiosk dies and restarts — display goes dark then back
   }, [])
 
   const doKill = useCallback(() => {
     if (msgRef.current) return
     setMsg('Stopping kiosk…')
-    fetch('/api/admin/stop', { method: 'POST' }).catch(() => {})
+    fetch('/api/admin/stop', { method: 'POST' }).catch(() => { })
     // kiosk dies — display goes dark, shell is waiting
   }, [])
 
@@ -557,14 +565,14 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
   const doReboot = useCallback(() => {
     if (msgRef.current) return
     setMsg('Rebooting…')
-    fetch('/api/admin/reboot', { method: 'POST' }).catch(() => {})
+    fetch('/api/admin/reboot', { method: 'POST' }).catch(() => { })
     // Pi reboots — display goes dark then the kiosk comes back on its own
   }, [])
 
   const doShutdown = useCallback(() => {
     if (msgRef.current) return
     setMsg('Shutting down…')
-    fetch('/api/admin/shutdown', { method: 'POST' }).catch(() => {})
+    fetch('/api/admin/shutdown', { method: 'POST' }).catch(() => { })
     // Pi powers off — display goes dark for good; wait ~10s before pulling power
   }, [])
 
@@ -603,7 +611,7 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') { e.preventDefault(); onCloseRef.current(); return }
       if (e.key === 'Escape') { e.preventDefault(); onCloseRef.current(); return }
-      if (e.key === 'ArrowUp')   { e.preventDefault(); setSel(s => Math.max(0, s - 1)); return }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setSel(s => Math.max(0, s - 1)); return }
       if (e.key === 'ArrowDown') { e.preventDefault(); setSel(s => Math.min(ADMIN_ACTIONS.length - 1, s + 1)); return }
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         if (ADMIN_ACTIONS[selRef.current] === 'printback') {
@@ -613,8 +621,8 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
         }
         return
       }
-      if (e.key === 'Enter')     { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[selRef.current]](); return }
-      const idx = ['1','2','3','4','5','6','7','8'].indexOf(e.key)
+      if (e.key === 'Enter') { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[selRef.current]](); return }
+      const idx = ['1', '2', '3', '4', '5', '6', '7', '8'].indexOf(e.key)
       if (idx !== -1) { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[idx]]() }
     }
     window.addEventListener('keydown', onKey)

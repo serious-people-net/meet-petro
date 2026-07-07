@@ -37,6 +37,15 @@ for f in "$SRC"/*.wav "$SRC"/*.mp3; do
   esac
   ffmpeg -y -v error -i "$f" -af "$filter" ${codec[@]+"${codec[@]}"} "$OUT/$name"
 
+  # Quiet sources can come out of the fixed-makeup chain still below the
+  # ceiling — top up with a straight peak-normalise second pass if so.
+  peak=$(ffmpeg -i "$OUT/$name" -af volumedetect -f null - 2>&1 | sed -n 's/.*max_volume: \(-*[0-9.]*\) dB/\1/p')
+  if awk "BEGIN{exit !($peak < -1.0)}"; then
+    gain=$(awk "BEGIN{printf \"%.1f\", -0.3 - ($peak)}")
+    ffmpeg -y -v error -i "$OUT/$name" -af "volume=${gain}dB,alimiter=limit=0.99:level=disabled" ${codec[@]+"${codec[@]}"} "$OUT/$name.tmp.${name##*.}"
+    mv "$OUT/$name.tmp.${name##*.}" "$OUT/$name"
+  fi
+
   ffmpeg -i "$OUT/$name" -af volumedetect -f null - 2>&1 \
     | sed -n "s/.*\(mean_volume.*\)/$name  \1/p;s/.*\(max_volume.*\)/$name  \1/p"
 done
