@@ -25,9 +25,12 @@ PRINTOUTS = DIST / "printouts"
 # Update this once the exhibit printer model is known.
 PRINTER_NAME = "petroprinter"
 
-# Back cover printed on the reverse of every idea sheet (duplex).
-# Set DUPLEX=True to re-enable once print quality on duplex is acceptable.
-BACK_COVER = "BACK-COVER.png"
+# Back cover printed on the reverse of every idea sheet.
+# DUPLEX=True prints it in one duplex job — but the Canon reduces ink
+# density on duplex (firmware behaviour, not overridable via CUPS), so the
+# workflow instead is: print a batch of back pages via /api/print-back
+# (admin panel), flip the stack, reload the tray.
+BACK_COVER = "BACK-PETRO.pdf"
 DUPLEX = False
 
 # lp options. PPD-style names — IPP-style equivalents were silently ignored
@@ -266,6 +269,34 @@ def print_idea():
             return jsonify({"ok": False, "error": "print command failed"}), 500
 
     return jsonify({"ok": True, "file": front_path.name})
+
+
+@app.post("/api/print-back")
+def print_back():
+    """Print N copies of the back cover single-sided, so a stack can be
+    flipped and reloaded into the tray (full ink density, unlike duplex)."""
+    data = request.get_json(silent=True) or {}
+    try:
+        count = int(data.get("count", 1))
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "count must be a number"}), 400
+    count = max(1, min(50, count))
+    back_path = PRINTOUTS / BACK_COVER
+    if not back_path.exists():
+        return jsonify({"ok": False, "error": f"{BACK_COVER} not found"}), 404
+    try:
+        cmd = ["lp"]
+        if PRINTER_NAME:
+            cmd += ["-d", PRINTER_NAME]
+        cmd += ["-n", str(count)]
+        cmd += PRINT_OPTIONS
+        cmd.append(str(back_path))
+        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=10)
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        app.logger.error("back-page print failed: %s\nstdout: %s\nstderr: %s",
+                         exc, getattr(exc, "stdout", ""), getattr(exc, "stderr", ""))
+        return jsonify({"ok": False, "error": "print command failed"}), 500
+    return jsonify({"ok": True, "count": count})
 
 
 @app.get("/")

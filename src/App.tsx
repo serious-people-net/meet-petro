@@ -108,16 +108,70 @@ const RESET_INDEX = FLOW.findIndex((n) => n.type === 'blob')
 const DEBUG = new URLSearchParams(window.location.search).has('debug')
 
 /* ---- sound --------------------------------------------------------- */
+// Two sound sets: 'synth' (Web Audio oscillators, the original) and 'samples'
+// (loudness-maximised files in public/sounds — much hotter output on the
+// Pi's quiet built-in speakers). Toggle persists; switchable from the admin
+// panel. Events without a sample file always fall back to synth.
+type SoundSet = 'synth' | 'samples'
+const SOUND_SET_KEY = 'petro-sound-set'
 const Sound = (() => {
   let ctx: AudioContext | null = null
   let master: GainNode | null = null
+  let soundSet: SoundSet = 'samples'
+  try { if (localStorage.getItem(SOUND_SET_KEY) === 'synth') soundSet = 'synth' } catch { }
+  const SAMPLE_FILES: Record<string, string> = {
+    nav: 'selector_sound.wav',
+    cheer: 'small_celebration.wav',
+    success: 'final_success.mp3',
+    loading: 'progress_loop.wav',
+  }
+  const buffers: Record<string, AudioBuffer> = {}
+  let samplesRequested = false
+  const loadSamples = (c: AudioContext) => {
+    if (samplesRequested) return
+    samplesRequested = true
+    // In dev import.meta.url points at /src/ (same gotcha as resolveDecept),
+    // so use the public root there; in the build the bundle sits in assets/.
+    const base = import.meta.env.DEV
+      ? new URL('/sounds/', window.location.origin)
+      : new URL('../sounds/', import.meta.url)
+    for (const [name, file] of Object.entries(SAMPLE_FILES)) {
+      fetch(new URL(file, base))
+        .then((r) => r.arrayBuffer())
+        .then((b) => c.decodeAudioData(b))
+        .then((buf) => { buffers[name] = buf })
+        .catch(() => { })
+    }
+  }
   const ac = () => {
     if (!ctx) {
       try { ctx = new ((window as any).AudioContext || (window as any).webkitAudioContext)() } catch { return null }
       master = ctx!.createGain(); master.gain.value = 0.85; master.connect(ctx!.destination)
     }
     if (ctx!.state === 'suspended') ctx!.resume()
+    loadSamples(ctx!)
     return ctx
+  }
+  // Play a sample at full scale. Returns false when unavailable (synth set,
+  // file still loading/missing) so callers can fall back to the synth cue.
+  const sample = (name: string, dur?: number) => {
+    if (soundSet !== 'samples') return false
+    const c = ac(); if (!c || !master) return false
+    const buf = buffers[name]; if (!buf) return false
+    const src = c.createBufferSource(); src.buffer = buf
+    if (dur != null) {
+      src.loop = dur > buf.duration
+      const g = c.createGain()
+      const t = c.currentTime
+      g.gain.setValueAtTime(1, t + Math.max(0, dur - 0.3))
+      g.gain.linearRampToValueAtTime(0.0001, t + dur)
+      src.connect(g).connect(master)
+      src.start(t); src.stop(t + dur)
+    } else {
+      src.connect(master)
+      src.start()
+    }
+    return true
   }
   const mtof = (n: number) => 440 * Math.pow(2, (n - 69) / 12)
   const tone = (note: number, at: number, dur: number, gain = 0.12, type: OscillatorType = 'triangle') => {
@@ -149,18 +203,25 @@ const Sound = (() => {
     src.start(t); src.stop(t + dur)
   }
   return {
-    nav() { noise(0.022, 0.04, 3400); tone(86, 0, 0.05, 0.04, 'sine') },
+    getSet(): SoundSet { return soundSet },
+    setSet(s: SoundSet) {
+      soundSet = s
+      try { localStorage.setItem(SOUND_SET_KEY, s) } catch { }
+    },
+    nav() { if (sample('nav')) return; noise(0.022, 0.04, 3400); tone(86, 0, 0.05, 0.04, 'sine') },
     select() { noise(0.04, 0.05, 1800); tone(67, 0, 0.08, 0.06); tone(71, 0.055, 0.1, 0.05) },
     power() { [60, 64, 67, 72].forEach((n, i) => tone(n, i * 0.075, 0.55, 0.055)) },
     land() { tone(60, 0, 0.5, 0.06, 'sine') },
-    cheer() { tone(72, 0, 0.12, 0.05, 'triangle'); tone(76, 0.1, 0.2, 0.04, 'triangle') },
+    cheer() { if (sample('cheer')) return; tone(72, 0, 0.12, 0.05, 'triangle'); tone(76, 0.1, 0.2, 0.04, 'triangle') },
     loading(dur: number) {
+      if (sample('loading', dur)) return
       const scale = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]
       const step = 0.42
       const steps = Math.min(scale.length, Math.max(3, Math.round((dur - 0.2) / step)))
       for (let i = 0; i < steps; i++) tone(60 + scale[i], 0.1 + i * step, 0.32, 0.02, 'sine')
     },
     success() {
+      if (sample('success')) return;
       [[60, 64], [64, 67], [67, 72]].forEach((pair, i) => stack(pair, i * 0.13, 0.26, 0.06))
       stack([60, 64, 67, 72], 0.42, 1.1, 0.05)
     },
@@ -395,23 +456,27 @@ function BlobScreen({ dur, onDone }: { dur: number; onDone: () => void }) {
 /* ---- admin panel ---------------------------------------------------- */
 type NetworkInfo = { ip: string | null; ssid: string | null }
 type BluetoothInfo = { paired: boolean; connected: boolean; usingSpeaker: boolean }
-type AdminAction = 'switch' | 'restart' | 'kill' | 'speaker' | 'reboot' | 'shutdown'
-const ADMIN_ACTIONS: AdminAction[] = ['switch', 'restart', 'kill', 'speaker', 'reboot', 'shutdown']
+type AdminAction = 'printback' | 'sounds' | 'speaker' | 'switch' | 'restart' | 'kill' | 'reboot' | 'shutdown'
+const ADMIN_ACTIONS: AdminAction[] = ['printback', 'sounds', 'speaker', 'switch', 'restart', 'kill', 'reboot', 'shutdown']
 
 function AdminPanel({ onClose }: { onClose: () => void }) {
   const [net, setNet] = useState<NetworkInfo>({ ip: null, ssid: null })
   const [bt, setBt] = useState<BluetoothInfo>({ paired: false, connected: false, usingSpeaker: false })
   const [msg, setMsg] = useState<string | null>(null)
   const [sel, setSel] = useState(0)
+  const [backCount, setBackCount] = useState(10)
+  const [soundSet, setSoundSet] = useState<SoundSet>(Sound.getSet())
 
   // Refs so the single stable keyboard handler always sees current values
   const netRef = useRef(net)
   const selRef = useRef(sel)
   const msgRef = useRef(msg)
+  const backCountRef = useRef(backCount)
   const onCloseRef = useRef(onClose)
   useEffect(() => { netRef.current = net }, [net])
   useEffect(() => { selRef.current = sel }, [sel])
   useEffect(() => { msgRef.current = msg }, [msg])
+  useEffect(() => { backCountRef.current = backCount }, [backCount])
   useEffect(() => { onCloseRef.current = onClose }, [onClose])
 
   // Poll network status every 2 s
@@ -496,9 +561,32 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
     // Pi powers off — display goes dark for good; wait ~10s before pulling power
   }, [])
 
+  const doPrintBack = useCallback(() => {
+    if (msgRef.current) return
+    const count = backCountRef.current
+    setMsg(`Printing ${count} back page${count === 1 ? '' : 's'}…`)
+    fetch('/api/print-back', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ count }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        setMsg(d.ok ? `Sent ${d.count} back page${d.count === 1 ? '' : 's'} to printer` : `Print failed: ${d.error}`)
+        setTimeout(() => setMsg(null), 3000)
+      })
+      .catch(() => { setMsg('Print failed'); setTimeout(() => setMsg(null), 3000) })
+  }, [])
+
+  const doToggleSounds = useCallback(() => {
+    const next: SoundSet = Sound.getSet() === 'samples' ? 'synth' : 'samples'
+    Sound.setSet(next)
+    setSoundSet(next)
+    Sound.success() // preview the new set
+  }, [])
+
   const HANDLERS: Record<AdminAction, () => void> = useMemo(
-    () => ({ switch: doSwitch, restart: doRestart, kill: doKill, speaker: doToggleSpeaker, reboot: doReboot, shutdown: doShutdown }),
-    [doSwitch, doRestart, doKill, doToggleSpeaker, doReboot, doShutdown]
+    () => ({ printback: doPrintBack, sounds: doToggleSounds, speaker: doToggleSpeaker, switch: doSwitch, restart: doRestart, kill: doKill, reboot: doReboot, shutdown: doShutdown }),
+    [doPrintBack, doToggleSounds, doToggleSpeaker, doSwitch, doRestart, doKill, doReboot, doShutdown]
   )
   const handlersRef = useRef(HANDLERS)
   useEffect(() => { handlersRef.current = HANDLERS }, [HANDLERS])
@@ -510,8 +598,16 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
       if (e.key === 'Escape') { e.preventDefault(); onCloseRef.current(); return }
       if (e.key === 'ArrowUp')   { e.preventDefault(); setSel(s => Math.max(0, s - 1)); return }
       if (e.key === 'ArrowDown') { e.preventDefault(); setSel(s => Math.min(ADMIN_ACTIONS.length - 1, s + 1)); return }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        if (ADMIN_ACTIONS[selRef.current] === 'printback') {
+          e.preventDefault()
+          const d = (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 5 : 1)
+          setBackCount(c => Math.max(1, Math.min(50, c + d)))
+        }
+        return
+      }
       if (e.key === 'Enter')     { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[selRef.current]](); return }
-      const idx = ['1','2','3','4','5','6'].indexOf(e.key)
+      const idx = ['1','2','3','4','5','6','7','8'].indexOf(e.key)
       if (idx !== -1) { e.preventDefault(); handlersRef.current[ADMIN_ACTIONS[idx]]() }
     }
     window.addEventListener('keydown', onKey)
@@ -528,26 +624,39 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
     </div>
   )
 
-  const btn = (idx: number, label: string, danger = false) => {
+  const btn = (idx: number, label: string, opts: { danger?: boolean; value?: React.ReactNode } = {}) => {
+    const { danger = false, value } = opts
     const focused = sel === idx && !msg
     return (
       <button
         onClick={() => HANDLERS[ADMIN_ACTIONS[idx]]()}
         style={{
-          width: '100%', padding: '13px 18px', border: 'none', borderRadius: 8,
+          width: '100%', padding: '11px 16px', border: 'none', borderRadius: 8,
           background: focused ? (danger ? '#450a0a' : '#0f2640') : '#161616',
           color: danger ? (focused ? '#fca5a5' : '#ef4444') : (focused ? '#e2e8f0' : '#94a3b8'),
           fontSize: 15, textAlign: 'left', cursor: 'pointer',
           outline: focused ? `1.5px solid ${danger ? '#ef4444' : '#3b82f6'}` : '1.5px solid transparent',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
           transition: 'background 0.1s',
         }}
       >
         <span>{label}</span>
-        <span style={{ opacity: 0.35, fontSize: 12 }}>{idx + 1}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {value}
+          <span style={{ opacity: 0.35, fontSize: 12 }}>{idx + 1}</span>
+        </span>
       </button>
     )
   }
+
+  const group = (label: string, children: React.ReactNode) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: '#3a3a3a', textTransform: 'uppercase', padding: '0 2px' }}>
+        {label}
+      </div>
+      {children}
+    </div>
+  )
 
   return (
     <div style={{
@@ -556,15 +665,16 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <div style={{
-        width: 360, background: '#0d0d0d', borderRadius: 14,
-        padding: '28px 24px', display: 'flex', flexDirection: 'column', gap: 20,
+        width: 440, maxHeight: '92vh', overflowY: 'auto',
+        background: '#0d0d0d', borderRadius: 14,
+        padding: '26px 26px', display: 'flex', flexDirection: 'column', gap: 16,
         border: '1px solid #1e1e1e',
       }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', color: '#444', textTransform: 'uppercase' }}>
           Admin
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {row('Network', net.ssid)}
           {row('IP', net.ip)}
           {row('Printer', onPrinterNet
@@ -582,20 +692,38 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {msg ? (
-          <div style={{ fontSize: 14, color: '#64748b', textAlign: 'center', padding: '10px 0' }}>{msg}</div>
+          <div style={{ fontSize: 14, color: '#64748b', textAlign: 'center', padding: '32px 0' }}>{msg}</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {btn(0, switchLabel)}
-            {btn(1, 'Restart kiosk')}
-            {btn(2, 'Kill kiosk → shell', true)}
-            {btn(3, bt.usingSpeaker ? 'Switch to built-in speakers' : 'Use Wonderboom speaker')}
-            {btn(4, 'Reboot Pi', true)}
-            {btn(5, 'Shut down Pi', true)}
-          </div>
+          <>
+            {group('Printer', <>
+              {btn(0, 'Print back pages', {
+                value: <span style={{ fontFamily: 'monospace', fontSize: 14, color: sel === 0 ? '#93c5fd' : '#64748b' }}>
+                  ‹ {backCount} ›
+                </span>,
+              })}
+            </>)}
+            {group('Audio', <>
+              {btn(1, 'Sound set', {
+                value: <span style={{ fontFamily: 'monospace', fontSize: 14, color: sel === 1 ? '#93c5fd' : '#64748b' }}>
+                  {soundSet === 'samples' ? 'samples' : 'synth'}
+                </span>,
+              })}
+              {btn(2, bt.usingSpeaker ? 'Switch to built-in speakers' : 'Use Wonderboom speaker')}
+            </>)}
+            {group('Network', <>
+              {btn(3, switchLabel)}
+            </>)}
+            {group('System', <>
+              {btn(4, 'Restart kiosk')}
+              {btn(5, 'Kill kiosk → shell', { danger: true })}
+              {btn(6, 'Reboot Pi', { danger: true })}
+              {btn(7, 'Shut down Pi', { danger: true })}
+            </>)}
+          </>
         )}
 
         <div style={{ fontSize: 11, color: '#2a2a2a', textAlign: 'center' }}>
-          ↑↓ navigate · Enter select · Esc close
+          ↑↓ navigate · ←→ adjust count · Enter select · Esc close
         </div>
       </div>
     </div>
