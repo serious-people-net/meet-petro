@@ -117,9 +117,9 @@ const SOUND_SET_KEY = 'petro-sound-set'
 const Sound = (() => {
   let ctx: AudioContext | null = null
   let master: GainNode | null = null
-  // Kiosk defaults to the loud sample set; the web demo keeps the synth set.
-  // The admin-panel toggle persists and overrides either default.
-  let soundSet: SoundSet = KIOSK ? 'samples' : 'synth'
+  // Synth everywhere by default (gains are hot enough for the Pi speaker
+  // since the loudness pass). The admin-panel toggle persists and overrides.
+  let soundSet: SoundSet = 'synth'
   try {
     const stored = localStorage.getItem(SOUND_SET_KEY)
     if (stored === 'synth' || stored === 'samples') soundSet = stored
@@ -222,26 +222,35 @@ const Sound = (() => {
       soundSet = s
       try { localStorage.setItem(SOUND_SET_KEY, s) } catch { }
     },
-    nav() { if (sample('nav')) return; noise(0.022, 0.04, 3400); tone(86, 0, 0.05, 0.04, 'sine') },
-    select() { if (sample('select')) return; noise(0.04, 0.05, 1800); tone(67, 0, 0.08, 0.06); tone(71, 0.055, 0.1, 0.05) },
-    power() { if (sample('power')) return; [60, 64, 67, 72].forEach((n, i) => tone(n, i * 0.075, 0.55, 0.055)) },
-    land() { if (sample('land')) return; tone(60, 0, 0.5, 0.06, 'sine') },
-    cheer() { if (sample('cheer')) return; tone(72, 0, 0.12, 0.05, 'triangle'); tone(76, 0.1, 0.2, 0.04, 'triangle') },
+    nav() { if (sample('nav')) return; noise(0.022, 0.1, 3400); tone(86, 0, 0.05, 0.1, 'sine') },
+    select() { if (sample('select')) return; noise(0.04, 0.12, 1800); tone(67, 0, 0.08, 0.15); tone(71, 0.055, 0.1, 0.12) },
+    power() { if (sample('power')) return; [60, 64, 67, 72].forEach((n, i) => tone(n, i * 0.075, 0.55, 0.14)) },
+    land() { if (sample('land')) return; tone(60, 0, 0.5, 0.15, 'sine') },
+    cheer() { if (sample('cheer')) return; tone(72, 0, 0.12, 0.12, 'triangle'); tone(76, 0.1, 0.2, 0.1, 'triangle') },
     loading(dur: number) {
       if (sample('loading', dur)) return
-      const scale = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]
-      const step = 0.42
-      const steps = Math.min(scale.length, Math.max(3, Math.round((dur - 0.2) / step)))
-      for (let i = 0; i < steps; i++) tone(60 + scale[i], 0.1 + i * step, 0.32, 0.02, 'sine')
+      // "up up up up — pause" motif repeated across the whole wait; each
+      // repeat starts a touch higher (capped) so it still reads as progress.
+      // Every note doubles a quiet upper octave — the tiny speaker barely
+      // reproduces the fundamentals, so the shimmer carries the loudness.
+      const motif = [0, 4, 7, 12]
+      const gap = 0.34, len = 0.28, cycle = 4 * gap + 2.3
+      for (let t0 = 0.3, k = 0; t0 + 4 * gap < dur - 0.5; t0 += cycle, k++) {
+        const base = 62 + Math.min(k * 2, 8)
+        motif.forEach((n, i) => {
+          tone(base + n, t0 + i * gap, len, 0.2, 'triangle')
+          tone(base + n + 12, t0 + i * gap, len, 0.06, 'sine')
+        })
+      }
     },
     success() {
       if (sample('success')) return;
-      [[60, 64], [64, 67], [67, 72]].forEach((pair, i) => stack(pair, i * 0.13, 0.26, 0.06))
-      stack([60, 64, 67, 72], 0.42, 1.1, 0.05)
+      [[60, 64], [64, 67], [67, 72]].forEach((pair, i) => stack(pair, i * 0.13, 0.26, 0.15))
+      stack([60, 64, 67, 72], 0.42, 1.1, 0.12)
     },
     reset() {
       if (sample('reset')) return;
-      [[72, 76], [69, 72], [65, 69], [64, 67]].forEach((pair, i) => stack(pair, i * 0.14, 0.34, 0.045))
+      [[72, 76], [69, 72], [65, 69], [64, 67]].forEach((pair, i) => stack(pair, i * 0.14, 0.34, 0.11))
     },
   }
 })()
@@ -481,6 +490,15 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
   const [sel, setSel] = useState(0)
   const [backCount, setBackCount] = useState(10)
   const [soundSet, setSoundSet] = useState<SoundSet>(Sound.getSet())
+  const [version, setVersion] = useState<string | null>(null)
+
+  // dist/VERSION is stamped by scripts/deploy-pi.sh (git sha + commit date).
+  // Missing in dev / non-deployed builds — the row just shows '—'.
+  useEffect(() => {
+    fetch('/VERSION').then(r => r.ok ? r.text() : Promise.reject())
+      .then(t => setVersion(t.trim()))
+      .catch(() => { })
+  }, [])
 
   // Refs so the single stable keyboard handler always sees current values
   const netRef = useRef(net)
@@ -692,6 +710,7 @@ function AdminPanel({ onClose }: { onClose: () => void }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {row('Network', net.ssid)}
           {row('IP', net.ip)}
+          {row('Build', version)}
           {row('Printer', onPrinterNet
             ? <span style={{ color: '#4ade80' }}>● reachable</span>
             : <span style={{ color: '#555' }}>● not on printer network</span>

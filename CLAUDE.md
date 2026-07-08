@@ -2,6 +2,16 @@
 
 Exhibit kiosk running on a Raspberry Pi (`petro`). Full setup/architecture: `docs/PI-SETUP.md`.
 
+## Always commit and deploy
+
+After any change to the app/server/scripts: **commit, push, then run
+`./scripts/deploy-pi.sh`** (no need to ask — Oli wants this every time). The
+script refuses a dirty tree, builds, stamps `dist/VERSION` with the git sha +
+commit date (shown in the admin panel's "Build" row), rsyncs
+dist/server/scripts to the Pi and restarts the kiosk. It's push-based over
+SSH, so it needs **no internet on the Pi** — at the venue run
+`./scripts/deploy-pi.sh petro.local` over ethernet or the printer AP.
+
 ## Reaching the Pi over SSH
 
 There are **two different networks** the Pi can be on, and they need different
@@ -25,10 +35,9 @@ connection details. Figure out which one is live before trying to SSH.
      plugging in just works, no wifi-switch juggling needed. Prefer this over
      joining the printer AP when both are possible — it doesn't fight with
      the printer connection at all.
-   - Either way: `ssh -i ~/.ssh/petro_ed25519 olifrost@petro.local`.
-     **You must pass `-i ~/.ssh/petro_ed25519` explicitly** — `petro.local`
-     isn't in `~/.ssh/config`, so a bare `ssh petro.local` tries the default
-     keys and fails with "Permission denied (publickey)".
+   - Either way: `ssh petro.local` — there's a `Host petro.local` block in
+     `~/.ssh/config` (user + IdentityFile) so the bare hostname just works,
+     including for `./scripts/deploy-pi.sh petro.local`.
 
 If `ssh petro` times out, that's the signal you're on scenario 2 — don't keep
 retrying the home address, switch to the `petro.local` address instead.
