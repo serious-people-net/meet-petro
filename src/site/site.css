@@ -169,7 +169,7 @@ text-decoration: none; color: var(--accent); transition: color .15s; }
 .feature p { font-size: 16px; color: var(--ink-70); margin: 10px 0 0; }
 
 /* ---- invite ---- */
-.invite { margin-top: 120px; text-align: center; }
+.invite { margin-top: 120px; text-align: center; display: none; }
 .invite h2 {
   font-family: var(--display); font-weight: 800;
   font-size: clamp(32px, 5.4vw, 54px); line-height: 1.0; letter-spacing: -1.3px;
