@@ -54,7 +54,7 @@ const ACTIONS = [
     numeral: 'II',
     title: 'Sign the Clean Creatives pledge',
     sub: 'For agencies and creatives who refuse fossil fuel clients',
-    href: 'https://cleancreatives.org/firms',
+    href: 'https://cleancreatives.org/join',
   },
   {
     numeral: 'III',
