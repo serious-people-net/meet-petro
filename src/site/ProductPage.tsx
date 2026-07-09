@@ -83,7 +83,7 @@ export default function ProductPage() {
         </span>
         <div className="nav-right">
           {!AFTER_EVENT && (
-            <a className="nav-cta" href="#invite">RSVP</a>
+            <a className="nav-cta" href="https://luma.com/9pa57v60" target="_blank" rel="noopener noreferrer">RSVP</a>
           )}
           {showDemo
             ? <button className="nav-cta nav-back" onClick={() => setShowDemo(false)}>← BACK</button>
